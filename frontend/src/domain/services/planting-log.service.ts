@@ -46,6 +46,18 @@ export interface PlantingLogCreateData {
   images?: string[];
 }
 
+// 后端 logType 到前端 LogType 的转换
+const convertLogType = (backendType: string): LogType => {
+  const typeMap: Record<string, LogType> = {
+    'watering': 'farming',
+    'fertilizing': 'farming',
+    'pest_control': 'disease',
+    'harvest': 'growth',
+    'observation': 'growth',
+  };
+  return typeMap[backendType] || 'growth';
+};
+
 // 转换后端数据到前端格式
 const convertLog = (item: any): PlantingLog => {
   return {
@@ -53,7 +65,7 @@ const convertLog = (item: any): PlantingLog => {
     userId: item.userId,
     cropId: item.cropId,
     cropName: item.cropName,
-    logType: item.logType,
+    logType: convertLogType(item.logType),
     recordDate: item.recordDate ?? item.logDate,
     content: item.content,
     images: item.images ?? (item.imageUrl ? [item.imageUrl] : []),

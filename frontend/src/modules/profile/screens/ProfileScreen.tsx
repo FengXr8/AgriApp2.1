@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import type { User, UserStats } from '../../../domain/types';
+import type { User, UserStats, TaskReminder } from '../../../domain/types';
 import type { MenuGroup } from '../types/profile.types';
 import { userService, taskReminderService } from '../../../domain/services';
 import { useFocusEffect } from '@react-navigation/native';
@@ -29,6 +29,7 @@ export default function ProfileScreen() {
   const [userInfo, setUserInfo] = useState<User | null>(null);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [pendingTaskCount, setPendingTaskCount] = useState(0);
+  const [tasks, setTasks] = useState<TaskReminder[]>([]);
   const [unreadCount] = useState(0);
   const [showQRCode, setShowQRCode] = useState(false);
   const [showAvatar, setShowAvatar] = useState(false);
@@ -50,6 +51,7 @@ export default function ProfileScreen() {
         setUserInfo(user);
         setStats(userStats);
         setPendingTaskCount(pendingCount);
+        setTasks(tasks);
       } catch (error) {
         console.error('[ProfileScreen] Failed to fetch profile data:', error);
       } finally {
@@ -94,6 +96,20 @@ export default function ProfileScreen() {
       setShowQRCode(true);
     } else {
       Alert.alert('提示', `${item.name} 功能开发中`);
+    }
+  };
+
+  const handleCompleteTask = async (taskId: string) => {
+    try {
+      await taskReminderService.updateTaskStatus(taskId, 'completed');
+      // 重新加载任务列表
+      const updatedTasks = await taskReminderService.getTasks();
+      setTasks(updatedTasks);
+      const pendingCount = updatedTasks.filter(task => task.status === 'pending').length;
+      setPendingTaskCount(pendingCount);
+    } catch (error) {
+      console.error('[ProfileScreen] Complete task failed:', error);
+      Alert.alert('任务更新失败', '请稍后重试');
     }
   };
 
@@ -176,6 +192,22 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={18} color="#4CAF50" />
           </TouchableOpacity>
         </View>
+
+        {/* 待完成任务列表（最多显示3条） */}
+        {tasks.filter(task => task.status === 'pending').slice(0, 3).map(task => (
+          <View key={task.id} style={styles.taskItem}>
+            <View style={styles.taskItemContent}>
+              <Text style={styles.taskItemTitle} numberOfLines={1}>{task.title}</Text>
+              <Text style={styles.taskItemCrop} numberOfLines={1}>{task.cropName}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.completeButton}
+              onPress={() => handleCompleteTask(task.id)}
+            >
+              <Text style={styles.completeButtonText}>完成</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
 
         {/* 统计数据卡片 */}
         <ScrollView
@@ -388,6 +420,45 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
+  },
+  taskItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 12,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  taskItemContent: {
+    flex: 1,
+    marginRight: 12,
+  },
+  taskItemTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
+  },
+  taskItemCrop: {
+    fontSize: 13,
+    color: '#888',
+  },
+  completeButton: {
+    backgroundColor: '#4CAF50',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  completeButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
   taskIcon: {
     width: 50,
