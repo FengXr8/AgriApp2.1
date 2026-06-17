@@ -33,10 +33,27 @@ const stageMap: Record<GrowthStage, string> = {
   mature: '成熟期',
 };
 
+// 中文 stage 到枚举的逆向映射
+const reverseStageMap: Record<string, GrowthStage> = {
+  '幼苗期': 'seedling',
+  '生长期': 'vegetative',
+  '分蘖期': 'vegetative',
+  '开花期': 'flowering',
+  '结果期': 'fruiting',
+  '成熟期': 'mature',
+};
+
 const statusMap: Record<CropStatus, '正常' | '注意' | '成熟'> = {
   planting: '正常',
   harvested: '成熟',
   ended: '注意',
+};
+
+// 中文 status 到枚举的逆向映射
+const reverseStatusMap: Record<string, CropStatus> = {
+  '正常': 'planting',
+  '注意': 'ended',
+  '成熟': 'harvested',
 };
 
 const getStatusColor = (status: string): string => {
@@ -172,11 +189,17 @@ export default function CropScreen() {
         {
           text: '删除',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
             if (selectedCrop) {
-              setCrops(crops.filter((crop) => crop.id !== selectedCrop.id));
-              setModalVisible(false);
-              Alert.alert('成功', '作物已删除');
+              try {
+                await cropService.deleteCrop(selectedCrop.id);
+                setModalVisible(false);
+                Alert.alert('成功', '作物已删除');
+                fetchCrops();
+              } catch (error) {
+                console.error('[CropScreen] Delete failed:', error);
+                Alert.alert('删除失败', '请稍后重试');
+              }
             }
           },
         },
@@ -184,41 +207,51 @@ export default function CropScreen() {
     );
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name.trim() || !formData.stage.trim()) {
       Alert.alert('提示', '请填写作物名称和生长期');
       return;
     }
 
-    if (modalMode === 'add') {
-      const newCrop: Crop = {
-        id: Date.now().toString(),
-        name: formData.name.trim(),
-        icon: selectedIcon,
-        stage: formData.stage.trim(),
-        plantDate: new Date().toISOString().split('T')[0],
-        harvestDate: formData.harvestDate || undefined,
-        status: formData.status,
-      };
-      setCrops([newCrop, ...crops]);
-      Alert.alert('成功', '作物添加成功');
-    } else if (modalMode === 'edit' && selectedCrop) {
-      setCrops(
-        crops.map((crop) =>
-          crop.id === selectedCrop.id
-            ? {
-                ...crop,
-                name: formData.name.trim(),
-                stage: formData.stage.trim(),
-                status: formData.status,
-                harvestDate: formData.harvestDate || undefined,
-              }
-            : crop
-        )
-      );
-      Alert.alert('成功', '作物更新成功');
+    // 将中文转换为枚举值
+    const domainStage = reverseStageMap[formData.stage.trim()] || 'seedling';
+    const domainStatus = reverseStatusMap[formData.status] || 'planting';
+
+    try {
+      if (modalMode === 'add') {
+        // 调用 API 新增作物
+        await cropService.addCrop({
+          name: formData.name.trim(),
+          stage: domainStage,
+          status: domainStatus,
+          plantDate: new Date().toISOString().split('T')[0],
+          harvestDate: formData.harvestDate.trim() || undefined,
+          icon: selectedIcon,
+        });
+        setModalVisible(false);
+        Alert.alert('成功', '作物添加成功');
+        fetchCrops();
+      } else if (modalMode === 'edit' && selectedCrop) {
+        // 调用 API 更新作物
+        await cropService.updateCrop(selectedCrop.id, {
+          name: formData.name.trim(),
+          stage: domainStage,
+          status: domainStatus,
+          harvestDate: formData.harvestDate.trim() || undefined,
+        });
+        setModalVisible(false);
+        Alert.alert('成功', '作物更新成功');
+        fetchCrops();
+      }
+    } catch (error) {
+      console.error('[CropScreen] Save failed:', error);
+      if (modalMode === 'add') {
+        Alert.alert('添加失败', '请稍后重试');
+      } else {
+        Alert.alert('更新失败', '请稍后重试');
+      }
+      // 失败时不关闭弹窗
     }
-    setModalVisible(false);
   };
 
   const handleCancel = () => {
