@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, ScrollView, Modal, Alert, Share } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, ScrollView, Modal, Alert, Share, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import type { RecognitionResult, RecognitionHistoryItem, ControlSuggestion, DangerLevel } from '../../../domain/types';
 import { recognitionService, cropService } from '../../../domain/services';
 
@@ -27,6 +28,8 @@ export default function DiseaseScreen() {
   const [history, setHistory] = useState<HistoryRecord[]>([]);
   const [showCropModal, setShowCropModal] = useState(false);
   const [crops, setCrops] = useState<string[]>([]);
+  const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
+  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     const fetchCrops = async () => {
@@ -50,68 +53,191 @@ export default function DiseaseScreen() {
   };
 
   const handleScan = async (type: 'camera' | 'gallery') => {
+    // 清理之前的进度 interval
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+
+    let imageUri: string | null = null;
+
+    if (type === 'camera') {
+      // 相机：先弹出中文预提示
+      Alert.alert(
+        '相机权限说明',
+        '需要打开相机，用于拍摄作物病虫害图片进行识别。',
+        [
+          {
+            text: '取消',
+            style: 'cancel',
+          },
+          {
+            text: '继续',
+            onPress: async () => {
+              try {
+                // 请求相机权限
+                const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+                if (!cameraPermission.granted) {
+                  Alert.alert('相机权限不足', '请在系统设置中开启相机权限');
+                  return;
+                }
+
+                // 启动相机
+                const cameraResult = await ImagePicker.launchCameraAsync({
+                  mediaTypes: ['images'],
+                  allowsEditing: false,
+                  quality: 0.8,
+                });
+
+                // 用户取消选择
+                if (cameraResult.canceled || !cameraResult.assets || cameraResult.assets.length === 0) {
+                  return;
+                }
+
+                imageUri = cameraResult.assets[0].uri;
+                if (imageUri) {
+                  proceedWithRecognition(imageUri, type);
+                }
+              } catch (error) {
+                console.error('Camera failed:', error);
+              }
+            },
+          },
+        ]
+      );
+    } else {
+      // 相册：先弹出中文预提示
+      Alert.alert(
+        '相册权限说明',
+        '需要打开相册，用于选择作物病虫害图片进行识别。',
+        [
+          {
+            text: '取消',
+            style: 'cancel',
+          },
+          {
+            text: '继续',
+            onPress: async () => {
+              try {
+                // 请求相册权限
+                const libraryPermission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (!libraryPermission.granted) {
+                  Alert.alert('相册权限不足', '请在系统设置中开启相册权限');
+                  return;
+                }
+
+                // 启动相册选择器
+                const libraryResult = await ImagePicker.launchImageLibraryAsync({
+                  mediaTypes: ['images'],
+                  allowsEditing: false,
+                  quality: 0.8,
+                });
+
+                // 用户取消选择
+                if (libraryResult.canceled || !libraryResult.assets || libraryResult.assets.length === 0) {
+                  return;
+                }
+
+                imageUri = libraryResult.assets[0].uri;
+                if (imageUri) {
+                  proceedWithRecognition(imageUri, type);
+                }
+              } catch (error) {
+                console.error('Gallery failed:', error);
+              }
+            },
+          },
+        ]
+      );
+    }
+  };
+
+  const proceedWithRecognition = (imageUri: string, type: 'camera' | 'gallery') => {
+    // 保存选中的图片 URI
+    setSelectedImageUri(imageUri);
     setState('loading');
     setProgress(0);
 
-    const source = type === 'camera' ? 'camera' : 'album';
-
-    const interval = setInterval(() => {
+    // 启动进度模拟
+    progressIntervalRef.current = setInterval(() => {
       setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          return 100;
+        if (prev >= 90) {
+          return 90;
         }
-        return prev + Math.random() * 15;
+        return prev + Math.random() * 10;
       });
     }, 200);
 
-    try {
-      const uploadResult = await recognitionService.uploadImage('mock://image', source);
-      clearInterval(interval);
-      setProgress(100);
+    // 调用识别服务（仍然走 Mock API）
+    const source = type === 'camera' ? 'camera' : 'album';
 
-      const recognitionResult = await recognitionService.getResult(uploadResult.id);
-      if (recognitionResult) {
-        const newResult: DiseaseResult = {
-          name: recognitionResult.pestName,
-          confidence: recognitionResult.confidence,
-          level: getLevelText(recognitionResult.dangerLevel),
-          suggestion: '',
-        };
-        setResult(newResult);
-
-        const controlSuggestion = await recognitionService.getSuggestion(recognitionResult.id);
-        if (controlSuggestion) {
-          setSuggestion(controlSuggestion);
-          newResult.suggestion = controlSuggestion.measures.join('\n') + (controlSuggestion.precautions.length > 0 ? '\n\n注意事项：\n' + controlSuggestion.precautions.join('\n') : '');
+    recognitionService.uploadImage(imageUri, source)
+      .then((uploadResult) => {
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+          progressIntervalRef.current = null;
         }
+        setProgress(100);
 
-        const newRecord: HistoryRecord = {
-          id: recognitionResult.id,
-          result: newResult,
-          timestamp: new Date().toLocaleString('zh-CN'),
-        };
-        setHistory((prev) => [newRecord, ...prev]);
-      }
+        // 获取识别结果
+        return recognitionService.getResult(uploadResult.id);
+      })
+      .then((recognitionResult) => {
+        if (recognitionResult) {
+          const newResult: DiseaseResult = {
+            name: recognitionResult.pestName,
+            confidence: recognitionResult.confidence,
+            level: getLevelText(recognitionResult.dangerLevel),
+            suggestion: '',
+          };
+          setResult(newResult);
 
-      setState('result');
-    } catch (error) {
-      console.error('Recognition failed:', error);
-      clearInterval(interval);
-      setProgress(0);
-      setState('idle');
-    }
+          return recognitionService.getSuggestion(recognitionResult.id)
+            .then((controlSuggestion) => {
+              if (controlSuggestion) {
+                setSuggestion(controlSuggestion);
+                newResult.suggestion = controlSuggestion.measures.join('\n') + (controlSuggestion.precautions.length > 0 ? '\n\n注意事项：\n' + controlSuggestion.precautions.join('\n') : '');
+              }
+
+              const newRecord: HistoryRecord = {
+                id: recognitionResult.id,
+                result: newResult,
+                timestamp: new Date().toLocaleString('zh-CN'),
+              };
+              setHistory((prev) => [newRecord, ...prev]);
+            });
+        }
+      })
+      .then(() => {
+        setState('result');
+      })
+      .catch((error) => {
+        // 清理 interval
+        if (progressIntervalRef.current) {
+          clearInterval(progressIntervalRef.current);
+          progressIntervalRef.current = null;
+        }
+        console.error('Recognition failed:', error);
+        Alert.alert('识别失败', '请稍后重试');
+        setProgress(0);
+        setState('idle');
+        setSelectedImageUri(null);
+      });
   };
 
   const handleRetry = () => {
     setResult(null);
+    setSuggestion(null);
     setProgress(0);
+    setSelectedImageUri(null);
     setState('idle');
   };
 
   const handleBack = () => {
     setResult(null);
+    setSuggestion(null);
     setProgress(0);
+    setSelectedImageUri(null);
     setState('idle');
   };
 
@@ -202,6 +328,17 @@ export default function DiseaseScreen() {
           <Text style={styles.resultIcon}>✅</Text>
           <Text style={styles.resultTitle}>识别完成</Text>
         </View>
+
+        {/* 图片预览 */}
+        {selectedImageUri && (
+          <View style={styles.imagePreviewContainer}>
+            <Image
+              source={{ uri: selectedImageUri }}
+              style={styles.previewImage}
+              resizeMode="cover"
+            />
+          </View>
+        )}
 
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>病害名称</Text>
@@ -501,6 +638,17 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: 'bold',
     color: '#333',
+  },
+  imagePreviewContainer: {
+    width: '100%',
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#f5f5f5',
+  },
+  previewImage: {
+    width: '100%',
+    height: 180,
   },
   infoRow: {
     flexDirection: 'row',

@@ -23,7 +23,14 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "允许应用访问相册，用于选择作物病虫害图片进行识别。",
+          "cameraPermission": "允许应用访问相机，用于拍摄作物病虫害图片进行识别。"
+        }
+      ]
     ]
   }
 }
