@@ -2,7 +2,6 @@ package com.agriapp.crop.controller;
 
 import com.agriapp.common.ApiResponse;
 import com.agriapp.crop.dto.CropDTO;
-import com.agriapp.crop.service.CropService;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,19 +11,18 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * 作物管理 API 控制器（local profile）
+ * 作物管理 Mock API 控制器（mock profile）
+ * 完全恢复原始 Mock 行为：GET 列表、GET by id、POST、PUT、DELETE 均使用内存 cropStore
  */
 @RestController
 @RequestMapping("/api/crops")
-@Profile("local")
-public class CropController {
+@Profile("mock")
+public class MockCropController {
 
-    private final CropService cropService;
     private final ConcurrentHashMap<String, CropDTO> cropStore = new ConcurrentHashMap<>();
     private final AtomicLong idGenerator = new AtomicLong(6);
 
-    public CropController(CropService cropService) {
-        this.cropService = cropService;
+    public MockCropController() {
         initMockData();
     }
 
@@ -39,8 +37,8 @@ public class CropController {
         crop1.setStage("fruiting");
         crop1.setStatus("planting");
         crop1.setIcon("🌾");
-        crop1.setCreatedAt("2026-03-15T10:00:00Z");
-        crop1.setUpdatedAt("2026-06-16T10:00:00Z");
+        crop1.setCreatedAt("2026-03-15T10:00:00");
+        crop1.setUpdatedAt("2026-06-16T10:00:00");
         cropStore.put(crop1.getId(), crop1);
 
         CropDTO crop2 = new CropDTO();
@@ -53,8 +51,8 @@ public class CropController {
         crop2.setStage("vegetative");
         crop2.setStatus("planting");
         crop2.setIcon("🍅");
-        crop2.setCreatedAt("2026-02-20T10:00:00Z");
-        crop2.setUpdatedAt("2026-06-16T10:00:00Z");
+        crop2.setCreatedAt("2026-02-20T10:00:00");
+        crop2.setUpdatedAt("2026-06-16T10:00:00");
         cropStore.put(crop2.getId(), crop2);
 
         CropDTO crop3 = new CropDTO();
@@ -64,11 +62,12 @@ public class CropController {
         crop3.setVariety("冬小麦");
         crop3.setPlantingArea(10.0);
         crop3.setPlantDate("2025-10-15");
+        crop3.setHarvestDate("2026-06-10");
         crop3.setStage("mature");
         crop3.setStatus("harvested");
         crop3.setIcon("🌾");
-        crop3.setCreatedAt("2025-10-15T10:00:00Z");
-        crop3.setUpdatedAt("2026-06-10T10:00:00Z");
+        crop3.setCreatedAt("2025-10-15T10:00:00");
+        crop3.setUpdatedAt("2026-06-10T10:00:00");
         cropStore.put(crop3.getId(), crop3);
 
         CropDTO crop5 = new CropDTO();
@@ -81,24 +80,23 @@ public class CropController {
         crop5.setStage("seedling");
         crop5.setStatus("planting");
         crop5.setIcon("🥬");
-        crop5.setCreatedAt("2026-05-10T10:00:00Z");
-        crop5.setUpdatedAt("2026-06-16T10:00:00Z");
+        crop5.setCreatedAt("2026-05-10T10:00:00");
+        crop5.setUpdatedAt("2026-06-16T10:00:00");
         cropStore.put(crop5.getId(), crop5);
     }
 
-    /**
-     * 获取作物列表
-     */
     @GetMapping
     public ApiResponse<List<CropDTO>> getCrops(
             @RequestParam(required = false) String userId) {
-        List<CropDTO> crops = cropService.getAllCrops();
+        List<CropDTO> crops = new ArrayList<>(cropStore.values());
+        if (userId != null && !userId.isEmpty()) {
+            crops = crops.stream()
+                    .filter(c -> userId.equals(c.getUserId()))
+                    .toList();
+        }
         return ApiResponse.success(crops);
     }
 
-    /**
-     * 根据 ID 获取作物详情
-     */
     @GetMapping("/{id}")
     public ApiResponse<CropDTO> getCropById(@PathVariable String id) {
         CropDTO crop = cropStore.get(id);
@@ -108,15 +106,12 @@ public class CropController {
         return ApiResponse.success(crop);
     }
 
-    /**
-     * 创建新作物
-     */
     @PostMapping
     public ApiResponse<CropDTO> createCrop(@RequestBody CropDTO cropDTO) {
         String newId = "crop_" + idGenerator.getAndIncrement();
         cropDTO.setId(newId);
-        cropDTO.setCreatedAt("2026-06-16T10:00:00Z");
-        cropDTO.setUpdatedAt("2026-06-16T10:00:00Z");
+        cropDTO.setCreatedAt("2026-06-16T10:00:00");
+        cropDTO.setUpdatedAt("2026-06-16T10:00:00");
         if (cropDTO.getUserId() == null) {
             cropDTO.setUserId("1");
         }
@@ -130,9 +125,6 @@ public class CropController {
         return ApiResponse.success(cropDTO);
     }
 
-    /**
-     * 更新作物信息
-     */
     @PutMapping("/{id}")
     public ApiResponse<CropDTO> updateCrop(
             @PathVariable String id,
@@ -142,14 +134,11 @@ public class CropController {
             return ApiResponse.error(404, "Crop not found");
         }
         cropDTO.setId(id);
-        cropDTO.setUpdatedAt("2026-06-16T10:00:00Z");
+        cropDTO.setUpdatedAt("2026-06-16T10:00:00");
         cropStore.put(id, cropDTO);
         return ApiResponse.success(cropDTO);
     }
 
-    /**
-     * 删除作物
-     */
     @DeleteMapping("/{id}")
     public ApiResponse<Void> deleteCrop(@PathVariable String id) {
         if (cropStore.remove(id) == null) {

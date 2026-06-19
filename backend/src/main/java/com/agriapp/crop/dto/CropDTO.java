@@ -9,22 +9,25 @@ public class CropDTO {
 
     private String id;
     private String userId;
+    private String farmId;
+    private String plotId;
     private String name;
     private String variety;
     private Double plantingArea;
     private String plantDate;
+    private String expectedHarvestDate;
     private String harvestDate;
     private String stage;
     private String status;
     private String icon;
+    private String remark;
 
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private String createdAt;
 
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private String updatedAt;
 
-    // Getter and Setter
     public String getId() {
         return id;
     }
@@ -39,6 +42,22 @@ public class CropDTO {
 
     public void setUserId(String userId) {
         this.userId = userId;
+    }
+
+    public String getFarmId() {
+        return farmId;
+    }
+
+    public void setFarmId(String farmId) {
+        this.farmId = farmId;
+    }
+
+    public String getPlotId() {
+        return plotId;
+    }
+
+    public void setPlotId(String plotId) {
+        this.plotId = plotId;
     }
 
     public String getName() {
@@ -73,12 +92,22 @@ public class CropDTO {
         this.plantDate = plantDate;
     }
 
+    public String getExpectedHarvestDate() {
+        return expectedHarvestDate;
+    }
+
+    public void setExpectedHarvestDate(String expectedHarvestDate) {
+        this.expectedHarvestDate = expectedHarvestDate;
+        this.harvestDate = expectedHarvestDate;
+    }
+
     public String getHarvestDate() {
         return harvestDate;
     }
 
     public void setHarvestDate(String harvestDate) {
         this.harvestDate = harvestDate;
+        this.expectedHarvestDate = harvestDate;
     }
 
     public String getStage() {
@@ -103,6 +132,14 @@ public class CropDTO {
 
     public void setIcon(String icon) {
         this.icon = icon;
+    }
+
+    public String getRemark() {
+        return remark;
+    }
+
+    public void setRemark(String remark) {
+        this.remark = remark;
     }
 
     public String getCreatedAt() {
