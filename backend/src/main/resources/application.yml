@@ -5,11 +5,11 @@ server:
 spring:
   application:
     name: agriapp-backend
+  profiles:
+    default: mock
 
-# 关闭 Banner
 spring.main.banner-mode: off
 
-# 日志配置
 logging:
   level:
     root: INFO
