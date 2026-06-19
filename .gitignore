@@ -1,4 +1,3 @@
-@"
 # dependencies
 node_modules/
 frontend/node_modules/
@@ -33,7 +32,10 @@ Thumbs.db
 # env
 .env
 .env.*
-"@ | Set-Content -Encoding UTF8 .gitignore
+
 # local AI agent config
 .claude/
 .agents/
+
+# Obsidian
+.obsidian/
