@@ -1,5 +1,6 @@
-import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, Alert } from 'react-native';
 import type { CropListItem } from '../types/crop-ui.types';
+import type { PlantingLog } from '../../../domain/types/planting-log.types';
 import {
   getPlotDisplayName,
   formatCropArea,
@@ -10,10 +11,50 @@ import {
 interface Props {
   visible: boolean;
   crop: CropListItem | null;
+  logs?: PlantingLog[];
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }
+
+// logType 中文映射
+const LOG_TYPE_LABELS: Record<string, string> = {
+  growth: '生长观察',
+  farming: '农事操作',
+  disease: '病虫害',
+  weather: '天气记录',
+};
+
+// logType 样式辅助函数
+const getLogTypeBadgeStyle = (logType: string) => {
+  switch (logType) {
+    case 'growth':
+      return { backgroundColor: '#E8F5E9' };
+    case 'farming':
+      return { backgroundColor: '#E3F2FD' };
+    case 'disease':
+      return { backgroundColor: '#FFEBEE' };
+    case 'weather':
+      return { backgroundColor: '#FFF3E0' };
+    default:
+      return { backgroundColor: '#f5f5f5' };
+  }
+};
+
+const getLogTypeTextStyle = (logType: string) => {
+  switch (logType) {
+    case 'growth':
+      return { color: '#2E7D32' };
+    case 'farming':
+      return { color: '#1565C0' };
+    case 'disease':
+      return { color: '#C62828' };
+    case 'weather':
+      return { color: '#EF6C00' };
+    default:
+      return { color: '#666' };
+  }
+};
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
@@ -33,8 +74,16 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export default function CropDetailModal({ visible, crop, onClose, onEdit, onDelete }: Props) {
+export default function CropDetailModal({ visible, crop, logs = [], onClose, onEdit, onDelete }: Props) {
   if (!crop) return null;
+
+  // 取最近 3 条记录
+  const recentLogs = logs.slice(0, 3);
+
+  const handleViewAllLogs = () => {
+    // TODO: 跳转到种植记录页面
+    Alert.alert('提示', '种植记录页面待接入');
+  };
 
   return (
     <Modal
@@ -91,6 +140,36 @@ export default function CropDetailModal({ visible, crop, onClose, onEdit, onDele
                 <Text style={styles.remarkText}>{crop.remark}</Text>
               </Section>
             ) : null}
+
+            {/* 最近记录区块 */}
+            <Section title="最近记录">
+              {recentLogs.length === 0 ? (
+                <Text style={styles.noLogsText}>暂无种植记录</Text>
+              ) : (
+                <>
+                  {recentLogs.map((log) => (
+                    <View key={log.id} style={styles.logItem}>
+                      <View style={styles.logHeader}>
+                        <Text style={styles.logDate}>{log.recordDate}</Text>
+                        <View style={[styles.logTypeBadge, getLogTypeBadgeStyle(log.logType)]}>
+                          <Text style={[styles.logTypeText, getLogTypeTextStyle(log.logType)]}>
+                            {LOG_TYPE_LABELS[log.logType] || log.logType}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.logContent} numberOfLines={1}>
+                        {log.content}
+                      </Text>
+                    </View>
+                  ))}
+                  {logs.length > 3 && (
+                    <TouchableOpacity style={styles.viewAllLogs} onPress={handleViewAllLogs}>
+                      <Text style={styles.viewAllLogsText}>查看全部记录</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
+            </Section>
           </ScrollView>
 
           <View style={styles.footer}>
@@ -210,6 +289,50 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
     lineHeight: 20,
+  },
+  // 种植记录样式
+  noLogsText: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    paddingVertical: 8,
+  },
+  logItem: {
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  logHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  logDate: {
+    fontSize: 13,
+    color: '#666',
+  },
+  logTypeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  logTypeText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  logContent: {
+    fontSize: 14,
+    color: '#333',
+  },
+  viewAllLogs: {
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  viewAllLogsText: {
+    fontSize: 14,
+    color: '#4CAF50',
+    fontWeight: '500',
   },
   footer: {
     flexDirection: 'row',

@@ -4,6 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { cropService } from '../../../domain/services';
 import type { CropListItem, CropModalMode, FormData, QuickStatusFilter, CropStats, AdvancedStatusFilter } from '../types/crop-ui.types';
+import type { PlantingLog } from '../../../domain/types/planting-log.types';
+import { plantingLogService } from '../../../domain/services/planting-log.service';
 import {
   domainCropToListItem,
   getCropStats,
@@ -37,6 +39,7 @@ export default function CropScreen() {
   const [selectedIcon, setSelectedIcon] = useState('🌾');
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [loading, setLoading] = useState(true);
+  const [cropLogs, setCropLogs] = useState<PlantingLog[]>([]);
 
   const fetchCrops = async () => {
     setLoading(true);
@@ -109,13 +112,26 @@ export default function CropScreen() {
     setSelectedAdvancedStatus('全部状态');
   };
 
-  const handleCropPress = (crop: CropListItem) => {
+  const handleCropPress = async (crop: CropListItem) => {
     setSelectedCrop(crop);
     setFormData(cropToFormData(crop));
     setSelectedIcon(crop.icon);
     setFormErrors({});
     setModalMode('view');
     setModalVisible(true);
+
+    // 加载该作物的种植记录
+    setCropLogs([]); // 先清空，避免短暂显示上一个作物的记录
+    try {
+      const logs = await plantingLogService.getLogsByCrop(crop.id);
+      // 按 cropId 过滤并按 createdAt 倒序排序
+      const filteredLogs = logs
+        .filter((log) => log.cropId === crop.id)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setCropLogs(filteredLogs);
+    } catch {
+      setCropLogs([]);
+    }
   };
 
   const handleAddCrop = () => {
@@ -269,6 +285,7 @@ export default function CropScreen() {
       <CropDetailModal
         visible={modalVisible && modalMode === 'view'}
         crop={selectedCrop}
+        logs={cropLogs}
         onClose={() => setModalVisible(false)}
         onEdit={handleEdit}
         onDelete={handleDelete}
