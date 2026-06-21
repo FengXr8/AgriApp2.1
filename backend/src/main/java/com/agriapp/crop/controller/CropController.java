@@ -93,6 +93,9 @@ public class CropController {
     public ApiResponse<List<CropDTO>> getCrops(
             @RequestParam(required = false) String userId) {
         List<CropDTO> crops = cropService.getAllCrops();
+        if (crops.isEmpty()) {
+            crops = new ArrayList<>(cropStore.values());
+        }
         return ApiResponse.success(crops);
     }
 
