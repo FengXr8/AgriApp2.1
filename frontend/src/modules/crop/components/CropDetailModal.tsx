@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'react-native';
 import type { CropListItem } from '../types/crop-ui.types';
 import type { PlantingLog } from '../../../domain/types/planting-log.types';
 import {
@@ -15,6 +15,7 @@ interface Props {
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onViewAllLogs?: () => void;
 }
 
 // logType 中文映射
@@ -74,15 +75,16 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export default function CropDetailModal({ visible, crop, logs = [], onClose, onEdit, onDelete }: Props) {
+export default function CropDetailModal({ visible, crop, logs = [], onClose, onEdit, onDelete, onViewAllLogs }: Props) {
   if (!crop) return null;
 
   // 取最近 3 条记录
   const recentLogs = logs.slice(0, 3);
 
   const handleViewAllLogs = () => {
-    // TODO: 跳转到种植记录页面
-    Alert.alert('提示', '种植记录页面待接入');
+    if (onViewAllLogs) {
+      onViewAllLogs();
+    }
   };
 
   return (

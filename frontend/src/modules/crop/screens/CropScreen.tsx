@@ -24,6 +24,7 @@ import CropCard from '../components/CropCard';
 import CropFilterModal from '../components/CropFilterModal';
 import CropDetailModal from '../components/CropDetailModal';
 import CropFormModal from '../components/CropFormModal';
+import PlantingLogListModal from '../components/PlantingLogListModal';
 
 export default function CropScreen() {
   const [crops, setCrops] = useState<CropListItem[]>([]);
@@ -40,6 +41,7 @@ export default function CropScreen() {
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [loading, setLoading] = useState(true);
   const [cropLogs, setCropLogs] = useState<PlantingLog[]>([]);
+  const [logListModalVisible, setLogListModalVisible] = useState(false);
 
   const fetchCrops = async () => {
     setLoading(true);
@@ -174,6 +176,10 @@ export default function CropScreen() {
     );
   };
 
+  const handleViewAllLogs = () => {
+    setLogListModalVisible(true);
+  };
+
   const handleSave = async () => {
     const validation = validateCropForm(formData);
     if (!validation.valid) {
@@ -289,6 +295,14 @@ export default function CropScreen() {
         onClose={() => setModalVisible(false)}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onViewAllLogs={handleViewAllLogs}
+      />
+
+      <PlantingLogListModal
+        visible={logListModalVisible}
+        cropName={selectedCrop?.name || ''}
+        logs={cropLogs}
+        onClose={() => setLogListModalVisible(false)}
       />
 
       <CropFormModal
