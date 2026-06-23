@@ -16,6 +16,7 @@ interface Props {
   onEdit: () => void;
   onDelete: () => void;
   onViewAllLogs?: () => void;
+  onAddLog?: () => void;
 }
 
 // logType 中文映射
@@ -66,16 +67,19 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, children, rightAction }: { title: string; children: React.ReactNode; rightAction?: React.ReactNode }) {
   return (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        {rightAction}
+      </View>
       <View style={styles.sectionBody}>{children}</View>
     </View>
   );
 }
 
-export default function CropDetailModal({ visible, crop, logs = [], onClose, onEdit, onDelete, onViewAllLogs }: Props) {
+export default function CropDetailModal({ visible, crop, logs = [], onClose, onEdit, onDelete, onViewAllLogs, onAddLog }: Props) {
   if (!crop) return null;
 
   // 取最近 3 条记录
@@ -143,34 +147,48 @@ export default function CropDetailModal({ visible, crop, logs = [], onClose, onE
               </Section>
             ) : null}
 
-            {/* 最近记录区块 */}
-            <Section title="最近记录">
+            {/* 农事记录区块 */}
+            <Section
+              title="农事记录"
+              rightAction={
+                <TouchableOpacity onPress={handleViewAllLogs}>
+                  <Text style={styles.viewAllLink}>查看全部 &gt;</Text>
+                </TouchableOpacity>
+              }
+            >
               {recentLogs.length === 0 ? (
-                <Text style={styles.noLogsText}>暂无种植记录</Text>
+                <View style={styles.emptyLogState}>
+                  <Text style={styles.emptyLogTitle}>还没有农事记录</Text>
+                  <Text style={styles.emptyLogSubtitle}>记录浇水、施肥、病虫害和生长观察</Text>
+                </View>
               ) : (
-                <>
-                  {recentLogs.map((log) => (
-                    <View key={log.id} style={styles.logItem}>
-                      <View style={styles.logHeader}>
-                        <Text style={styles.logDate}>{log.recordDate}</Text>
-                        <View style={[styles.logTypeBadge, getLogTypeBadgeStyle(log.logType)]}>
-                          <Text style={[styles.logTypeText, getLogTypeTextStyle(log.logType)]}>
-                            {LOG_TYPE_LABELS[log.logType] || log.logType}
-                          </Text>
-                        </View>
+                <View style={styles.timeline}>
+                  {recentLogs.map((log, index) => (
+                    <View key={log.id} style={styles.timelineItem}>
+                      <View style={styles.timelineLine}>
+                        <View style={styles.timelineDot} />
+                        {index < recentLogs.length - 1 && <View style={styles.timelineConnector} />}
                       </View>
-                      <Text style={styles.logContent} numberOfLines={1}>
-                        {log.content}
-                      </Text>
+                      <View style={styles.timelineContent}>
+                        <View style={styles.timelineHeader}>
+                          <Text style={styles.timelineDate}>{log.recordDate.slice(5)}</Text>
+                          <View style={[styles.timelineTypeBadge, getLogTypeBadgeStyle(log.logType)]}>
+                            <Text style={[styles.timelineTypeText, getLogTypeTextStyle(log.logType)]}>
+                              {LOG_TYPE_LABELS[log.logType] || log.logType}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={styles.timelineContentText} numberOfLines={2}>
+                          {log.content}
+                        </Text>
+                      </View>
                     </View>
                   ))}
-                  {logs.length > 3 && (
-                    <TouchableOpacity style={styles.viewAllLogs} onPress={handleViewAllLogs}>
-                      <Text style={styles.viewAllLogsText}>查看全部记录</Text>
-                    </TouchableOpacity>
-                  )}
-                </>
+                </View>
               )}
+              <TouchableOpacity style={styles.addLogButton} onPress={onAddLog}>
+                <Text style={styles.addLogButtonText}>+ 记一笔农事</Text>
+              </TouchableOpacity>
             </Section>
           </ScrollView>
 
@@ -242,11 +260,16 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 16,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   sectionTitle: {
     fontSize: 13,
     fontWeight: '600',
     color: '#4CAF50',
-    marginBottom: 8,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -292,48 +315,92 @@ const styles = StyleSheet.create({
     color: '#333',
     lineHeight: 20,
   },
-  // 种植记录样式
-  noLogsText: {
+  viewAllLink: {
+    fontSize: 12,
+    color: '#4CAF50',
+    fontWeight: '500',
+  },
+  emptyLogState: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  emptyLogTitle: {
     fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  emptyLogSubtitle: {
+    fontSize: 12,
     color: '#999',
     textAlign: 'center',
+  },
+  timeline: {
+    paddingLeft: 4,
+  },
+  timelineItem: {
+    flexDirection: 'row',
     paddingVertical: 8,
   },
-  logItem: {
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+  timelineLine: {
+    width: 20,
+    alignItems: 'center',
+    paddingTop: 4,
   },
-  logHeader: {
+  timelineDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4CAF50',
+  },
+  timelineConnector: {
+    flex: 1,
+    width: 1,
+    backgroundColor: '#e0e0e0',
+    marginTop: 4,
+  },
+  timelineContent: {
+    flex: 1,
+    paddingLeft: 8,
+  },
+  timelineHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
   },
-  logDate: {
-    fontSize: 13,
-    color: '#666',
-  },
-  logTypeBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  logTypeText: {
-    fontSize: 11,
+  timelineDate: {
+    fontSize: 12,
+    color: '#999',
     fontWeight: '500',
   },
-  logContent: {
-    fontSize: 14,
+  timelineTypeBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+  },
+  timelineTypeText: {
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  timelineContentText: {
+    fontSize: 13,
     color: '#333',
+    lineHeight: 18,
   },
-  viewAllLogs: {
+  addLogButton: {
+    marginTop: 10,
     paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    backgroundColor: '#E8F5E9',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#C8E6C9',
   },
-  viewAllLogsText: {
-    fontSize: 14,
-    color: '#4CAF50',
+  addLogButtonText: {
+    fontSize: 13,
+    color: '#2E7D32',
     fontWeight: '500',
   },
   footer: {

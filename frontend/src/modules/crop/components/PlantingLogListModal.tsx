@@ -6,6 +6,7 @@ interface Props {
   cropName: string;
   logs: PlantingLog[];
   onClose: () => void;
+  onAddLog: () => void;
 }
 
 // logType 中文映射
@@ -47,7 +48,7 @@ const getLogTypeTextStyle = (logType: string) => {
   }
 };
 
-export default function PlantingLogListModal({ visible, cropName, logs, onClose }: Props) {
+export default function PlantingLogListModal({ visible, cropName, logs, onClose, onAddLog }: Props) {
   return (
     <Modal
       visible={visible}
@@ -60,47 +61,53 @@ export default function PlantingLogListModal({ visible, cropName, logs, onClose 
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <Text style={styles.title}>{cropName}</Text>
-              <Text style={styles.subtitle}>种植记录</Text>
+              <Text style={styles.subtitle}>农事记录</Text>
             </View>
-            <TouchableOpacity onPress={onClose}>
-              <Text style={styles.close}>✕</Text>
-            </TouchableOpacity>
+            <View style={styles.headerRight}>
+              <TouchableOpacity style={styles.addButton} onPress={onAddLog}>
+                <Text style={styles.addButtonText}>+ 记录</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onClose}>
+                <Text style={styles.close}>✕</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <ScrollView style={styles.body}>
             {logs.length === 0 ? (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyIcon}>📝</Text>
-                <Text style={styles.emptyText}>暂无种植记录</Text>
+                <Text style={styles.emptyTitle}>暂无农事记录</Text>
+                <Text style={styles.emptySubtitle}>记录作物生长、浇水、施肥和病虫害情况</Text>
+                <TouchableOpacity style={styles.emptyAddButton} onPress={onAddLog}>
+                  <Text style={styles.emptyAddButtonText}>+ 记一笔农事</Text>
+                </TouchableOpacity>
               </View>
             ) : (
-              logs.map((log) => (
-                <View key={log.id} style={styles.logCard}>
-                  <View style={styles.logHeader}>
-                    <Text style={styles.logDate}>{log.recordDate}</Text>
-                    <View style={[styles.logTypeBadge, getLogTypeBadgeStyle(log.logType)]}>
-                      <Text style={[styles.logTypeText, getLogTypeTextStyle(log.logType)]}>
-                        {LOG_TYPE_LABELS[log.logType] || log.logType}
+              <View style={styles.timeline}>
+                {logs.map((log) => (
+                  <TouchableOpacity key={log.id} style={styles.timelineItem} activeOpacity={0.8}>
+                    <View style={styles.timelineLine}>
+                      <View style={styles.timelineDot} />
+                    </View>
+                    <View style={styles.timelineContent}>
+                      <View style={styles.timelineHeader}>
+                        <Text style={styles.timelineDate}>{log.recordDate}</Text>
+                        <View style={[styles.timelineTypeBadge, getLogTypeBadgeStyle(log.logType)]}>
+                          <Text style={[styles.timelineTypeText, getLogTypeTextStyle(log.logType)]}>
+                            {LOG_TYPE_LABELS[log.logType] || log.logType}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.timelineContentText} numberOfLines={2}>
+                        {log.content}
                       </Text>
                     </View>
-                  </View>
-                  <Text style={styles.logContent}>{log.content}</Text>
-                  {log.images && log.images.length > 0 && (
-                    <View style={styles.imagesInfo}>
-                      <Text style={styles.imagesIcon}>📷</Text>
-                      <Text style={styles.imagesCount}>{log.images.length} 张图片</Text>
-                    </View>
-                  )}
-                </View>
-              ))
+                    <Text style={styles.timelineArrow}>›</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             )}
           </ScrollView>
-
-          <View style={styles.footer}>
-            <TouchableOpacity style={styles.addButtonDisabled} disabled>
-              <Text style={styles.addButtonDisabledText}>+ 新增记录（待接入）</Text>
-            </TouchableOpacity>
-          </View>
         </View>
       </View>
     </Modal>
@@ -131,6 +138,11 @@ const styles = StyleSheet.create({
   headerLeft: {
     flex: 1,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   title: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -146,6 +158,19 @@ const styles = StyleSheet.create({
     color: '#999',
     padding: 4,
   },
+  addButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#E8F5E9',
+    borderWidth: 1,
+    borderColor: '#C8E6C9',
+  },
+  addButtonText: {
+    fontSize: 13,
+    color: '#2E7D32',
+    fontWeight: '600',
+  },
   body: {
     flex: 1,
     padding: 16,
@@ -154,71 +179,84 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 40,
   },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 12,
-  },
-  emptyText: {
+  emptyTitle: {
     fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  emptySubtitle: {
+    fontSize: 13,
     color: '#999',
+    textAlign: 'center',
+    marginBottom: 20,
   },
-  logCard: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
+  emptyAddButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    backgroundColor: '#E8F5E9',
+    borderWidth: 1,
+    borderColor: '#C8E6C9',
   },
-  logHeader: {
+  emptyAddButtonText: {
+    fontSize: 14,
+    color: '#2E7D32',
+    fontWeight: '500',
+  },
+  timeline: {
+    paddingLeft: 4,
+  },
+  timelineItem: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    alignItems: 'center',
+  },
+  timelineLine: {
+    width: 24,
+    alignItems: 'center',
+    paddingTop: 2,
+  },
+  timelineDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4CAF50',
+  },
+  timelineContent: {
+    flex: 1,
+    paddingLeft: 12,
+  },
+  timelineHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  logDate: {
+  timelineDate: {
+    fontSize: 13,
+    color: '#999',
+    fontWeight: '500',
+  },
+  timelineTypeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  timelineTypeText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  timelineContentText: {
     fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
-  logTypeBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  logTypeText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  logContent: {
-    fontSize: 15,
     color: '#333',
-    lineHeight: 22,
+    lineHeight: 20,
   },
-  imagesInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  imagesIcon: {
-    fontSize: 14,
-    marginRight: 4,
-  },
-  imagesCount: {
-    fontSize: 12,
-    color: '#999',
-  },
-  footer: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  addButtonDisabled: {
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: '#f5f5f5',
-    alignItems: 'center',
-  },
-  addButtonDisabledText: {
-    fontSize: 16,
-    color: '#999',
+  timelineArrow: {
+    fontSize: 20,
+    color: '#ddd',
+    paddingRight: 8,
   },
 });

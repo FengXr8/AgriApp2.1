@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { cropService } from '../../../domain/services';
 import type { CropListItem, CropModalMode, FormData, QuickStatusFilter, CropStats, AdvancedStatusFilter } from '../types/crop-ui.types';
-import type { PlantingLog } from '../../../domain/types/planting-log.types';
+import type { PlantingLog, LogType } from '../../../domain/types/planting-log.types';
 import { plantingLogService } from '../../../domain/services/planting-log.service';
 import {
   domainCropToListItem,
@@ -25,6 +25,7 @@ import CropFilterModal from '../components/CropFilterModal';
 import CropDetailModal from '../components/CropDetailModal';
 import CropFormModal from '../components/CropFormModal';
 import PlantingLogListModal from '../components/PlantingLogListModal';
+import PlantingLogFormModal from '../components/PlantingLogFormModal';
 
 export default function CropScreen() {
   const [crops, setCrops] = useState<CropListItem[]>([]);
@@ -42,6 +43,7 @@ export default function CropScreen() {
   const [loading, setLoading] = useState(true);
   const [cropLogs, setCropLogs] = useState<PlantingLog[]>([]);
   const [logListModalVisible, setLogListModalVisible] = useState(false);
+  const [plantingLogFormVisible, setPlantingLogFormVisible] = useState(false);
 
   const fetchCrops = async () => {
     setLoading(true);
@@ -180,6 +182,40 @@ export default function CropScreen() {
     setLogListModalVisible(true);
   };
 
+  const handleAddLog = () => {
+    setPlantingLogFormVisible(true);
+  };
+
+  const handleSubmitLog = async (data: { logType: LogType; recordDate: string; content: string }) => {
+    if (!selectedCrop) {
+      Alert.alert('提示', '请先选择作物');
+      return;
+    }
+
+    try {
+      await plantingLogService.addLog({
+        cropId: selectedCrop.id,
+        cropName: selectedCrop.name,
+        logType: data.logType,
+        recordDate: data.recordDate,
+        content: data.content,
+        images: [],
+      });
+
+      const logs = await plantingLogService.getLogsByCrop(selectedCrop.id);
+      const filteredLogs = logs
+        .filter((log) => log.cropId === selectedCrop.id)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setCropLogs(filteredLogs);
+
+      Alert.alert('成功', '记录已添加');
+    } catch (error) {
+      console.error('[CropScreen] Failed to add log:', error);
+      Alert.alert('添加失败', '请稍后重试');
+      throw error;
+    }
+  };
+
   const handleSave = async () => {
     const validation = validateCropForm(formData);
     if (!validation.valid) {
@@ -300,6 +336,7 @@ export default function CropScreen() {
         onEdit={handleEdit}
         onDelete={handleDelete}
         onViewAllLogs={handleViewAllLogs}
+        onAddLog={handleAddLog}
       />
 
       <PlantingLogListModal
@@ -307,6 +344,7 @@ export default function CropScreen() {
         cropName={selectedCrop?.name || ''}
         logs={cropLogs}
         onClose={() => setLogListModalVisible(false)}
+        onAddLog={handleAddLog}
       />
 
       <CropFormModal
@@ -319,6 +357,12 @@ export default function CropScreen() {
         onCancel={handleCancel}
         onSubmit={handleSave}
         errors={formErrors}
+      />
+
+      <PlantingLogFormModal
+        visible={plantingLogFormVisible}
+        onClose={() => setPlantingLogFormVisible(false)}
+        onSubmit={handleSubmitLog}
       />
     </View>
   );

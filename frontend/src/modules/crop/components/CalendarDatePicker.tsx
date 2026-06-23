@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, Modal, StyleSheet } from 'react-native';
 import { getCalendarLunarInfo } from '../utils/lunarCalendar';
 
 interface Props {
-  label: string;
+  label?: string;
   required?: boolean;
   value: string;
   placeholder?: string;
@@ -11,6 +11,7 @@ interface Props {
   onChange: (date: string) => void;
   allowClear?: boolean;
   minDate?: string;
+  compact?: boolean;
 }
 
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
@@ -27,6 +28,7 @@ export default function CalendarDatePicker({
   onChange,
   allowClear,
   minDate,
+  compact = false,
 }: Props) {
   const [modalVisible, setModalVisible] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('date');
@@ -274,19 +276,32 @@ export default function CalendarDatePicker({
 
   return (
     <>
-      <View style={styles.field}>
-        <Text style={styles.label}>
-          {label}
-          {required && <Text style={styles.required}> *</Text>}
-        </Text>
-        <TouchableOpacity style={styles.input} onPress={openModal}>
-          <Text style={[styles.inputText, !value && styles.placeholder]}>
-            {value || placeholder}
-          </Text>
-          <Text style={styles.icon}>📅</Text>
+      {compact ? (
+        // 紧凑模式：只显示日期行
+        <TouchableOpacity style={styles.compactInput} onPress={openModal}>
+          <View style={styles.compactLeft}>
+            <Text style={styles.compactLabel}>今天</Text>
+            <Text style={styles.compactSeparator}>·</Text>
+            <Text style={styles.compactDate}>{value || placeholder}</Text>
+          </View>
+          <Text style={styles.compactIcon}>📅</Text>
         </TouchableOpacity>
-        {error && <Text style={styles.error}>{error}</Text>}
-      </View>
+      ) : (
+        // 标准模式：显示完整表单字段
+        <View style={styles.field}>
+          <Text style={styles.label}>
+            {label}
+            {required && <Text style={styles.required}> *</Text>}
+          </Text>
+          <TouchableOpacity style={styles.input} onPress={openModal}>
+            <Text style={[styles.inputText, !value && styles.placeholder]}>
+              {value || placeholder}
+            </Text>
+            <Text style={styles.icon}>📅</Text>
+          </TouchableOpacity>
+          {error && <Text style={styles.error}>{error}</Text>}
+        </View>
+      )}
 
       <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
         <TouchableOpacity
@@ -584,5 +599,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#4CAF50',
     fontWeight: '500',
+  },
+  // 紧凑模式样式
+  compactInput: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    backgroundColor: '#f8f9fa',
+  },
+  compactLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  compactLabel: {
+    fontSize: 14,
+    color: '#999',
+    fontWeight: '500',
+    marginRight: 6,
+  },
+  compactSeparator: {
+    fontSize: 14,
+    color: '#ddd',
+    marginRight: 6,
+  },
+  compactDate: {
+    fontSize: 14,
+    color: '#333',
+    fontWeight: '500',
+  },
+  compactIcon: {
+    fontSize: 18,
   },
 });
