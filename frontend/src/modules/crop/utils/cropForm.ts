@@ -2,8 +2,8 @@ import type { FormData, CropListItem } from '../types/crop-ui.types';
 import type { GrowthStage, CropStatus } from '../../../domain/types';
 import { reverseStageMap, reverseStatusMap } from './cropDisplay';
 
-const PLOT_OPTIONS = ['plot_001', 'plot_002', 'plot_003'];
-const PLOT_DISPLAY_NAMES = ['一号田', '二号田', '三号田'];
+const PLOT_OPTIONS = ['plot_001'];
+const PLOT_DISPLAY_NAMES = ['一号田'];
 const STAGE_OPTIONS = ['幼苗期', '生长期', '开花期', '结果期', '成熟期'];
 const STATUS_OPTIONS = ['种植中', '正常', '需浇水', '需施肥', '病虫风险', '已结束'];
 

@@ -197,7 +197,11 @@ export default function CropScreen() {
         fetchCrops();
       } else if (modalMode === 'edit' && selectedCrop) {
         const payload = formDataToUpdatePayload(formData, selectedIcon);
-        await cropService.updateCrop(selectedCrop.id, payload);
+        const updatedCrop = await cropService.updateCrop(selectedCrop.id, payload);
+        if (!updatedCrop) {
+          Alert.alert('更新失败', '请稍后重试');
+          return;
+        }
         setModalVisible(false);
         setFormErrors({});
         Alert.alert('成功', '作物更新成功');
