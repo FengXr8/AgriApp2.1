@@ -49,10 +49,14 @@ export interface PlantingLogCreateData {
 // 后端 logType 到前端 LogType 的转换
 const convertLogType = (backendType: string): LogType => {
   const typeMap: Record<string, LogType> = {
+    'growth': 'growth',
+    'farming': 'farming',
+    'disease': 'disease',
+    'weather': 'weather',
+    'harvest': 'growth',
     'watering': 'farming',
     'fertilizing': 'farming',
     'pest_control': 'disease',
-    'harvest': 'growth',
     'observation': 'growth',
   };
   return typeMap[backendType] || 'growth';
