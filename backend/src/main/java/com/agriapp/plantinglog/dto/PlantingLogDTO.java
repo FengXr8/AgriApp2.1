@@ -32,6 +32,9 @@ public class PlantingLogDTO {
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     private String createdAt;
 
+    // 数据库 remark 字段
+    private String remark;
+
     // Getter and Setter
     public String getId() {
         return id;
@@ -119,5 +122,13 @@ public class PlantingLogDTO {
 
     public void setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getRemark() {
+        return remark;
+    }
+
+    public void setRemark(String remark) {
+        this.remark = remark;
     }
 }

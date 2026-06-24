@@ -44,6 +44,7 @@ export default function CropScreen() {
   const [cropLogs, setCropLogs] = useState<PlantingLog[]>([]);
   const [logListModalVisible, setLogListModalVisible] = useState(false);
   const [plantingLogFormVisible, setPlantingLogFormVisible] = useState(false);
+  const [editingLog, setEditingLog] = useState<PlantingLog | null>(null);
 
   const fetchCrops = async () => {
     setLoading(true);
@@ -183,7 +184,32 @@ export default function CropScreen() {
   };
 
   const handleAddLog = () => {
+    setEditingLog(null);
     setPlantingLogFormVisible(true);
+  };
+
+  const handleEditLog = (log: PlantingLog) => {
+    setEditingLog(log);
+    setPlantingLogFormVisible(true);
+  };
+
+  const handleDeleteLog = async (logId: string) => {
+    try {
+      const success = await plantingLogService.deleteLog(logId);
+      if (success && selectedCrop) {
+        const logs = await plantingLogService.getLogsByCrop(selectedCrop.id);
+        const filteredLogs = logs
+          .filter((log) => log.cropId === selectedCrop.id)
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setCropLogs(filteredLogs);
+        Alert.alert('成功', '记录已删除');
+      } else {
+        Alert.alert('删除失败', '请稍后重试');
+      }
+    } catch (error) {
+      console.error('[CropScreen] Failed to delete log:', error);
+      Alert.alert('删除失败', '请稍后重试');
+    }
   };
 
   const handleSubmitLog = async (data: { logType: LogType; recordDate: string; content: string }) => {
@@ -193,25 +219,41 @@ export default function CropScreen() {
     }
 
     try {
-      await plantingLogService.addLog({
-        cropId: selectedCrop.id,
-        cropName: selectedCrop.name,
-        logType: data.logType,
-        recordDate: data.recordDate,
-        content: data.content,
-        images: [],
-      });
+      if (editingLog) {
+        // 编辑模式
+        await plantingLogService.updateLog(editingLog.id, {
+          logType: data.logType,
+          recordDate: data.recordDate,
+          content: data.content,
+          images: editingLog.images || [],
+        });
+        Alert.alert('成功', '记录已修改');
+      } else {
+        // 新增模式
+        await plantingLogService.addLog({
+          cropId: selectedCrop.id,
+          cropName: selectedCrop.name,
+          logType: data.logType,
+          recordDate: data.recordDate,
+          content: data.content,
+          images: [],
+        });
+        Alert.alert('成功', '记录已添加');
+      }
 
       const logs = await plantingLogService.getLogsByCrop(selectedCrop.id);
       const filteredLogs = logs
         .filter((log) => log.cropId === selectedCrop.id)
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setCropLogs(filteredLogs);
-
-      Alert.alert('成功', '记录已添加');
+      setEditingLog(null);
     } catch (error) {
-      console.error('[CropScreen] Failed to add log:', error);
-      Alert.alert('添加失败', '请稍后重试');
+      console.error('[CropScreen] Failed to submit log:', error);
+      if (editingLog) {
+        Alert.alert('修改失败', '请稍后重试');
+      } else {
+        Alert.alert('添加失败', '请稍后重试');
+      }
       throw error;
     }
   };
@@ -345,6 +387,8 @@ export default function CropScreen() {
         logs={cropLogs}
         onClose={() => setLogListModalVisible(false)}
         onAddLog={handleAddLog}
+        onEditLog={handleEditLog}
+        onDeleteLog={handleDeleteLog}
       />
 
       <CropFormModal
@@ -361,8 +405,12 @@ export default function CropScreen() {
 
       <PlantingLogFormModal
         visible={plantingLogFormVisible}
-        onClose={() => setPlantingLogFormVisible(false)}
+        onClose={() => {
+          setPlantingLogFormVisible(false);
+          setEditingLog(null);
+        }}
         onSubmit={handleSubmitLog}
+        editingLog={editingLog}
       />
     </View>
   );

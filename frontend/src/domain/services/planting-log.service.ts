@@ -46,6 +46,13 @@ export interface PlantingLogCreateData {
   images?: string[];
 }
 
+export interface PlantingLogUpdateData {
+  logType: LogType;
+  recordDate: string;
+  content: string;
+  images?: string[];
+}
+
 // 后端 logType 到前端 LogType 的转换
 const convertLogType = (backendType: string): LogType => {
   const typeMap: Record<string, LogType> = {
@@ -125,6 +132,43 @@ export const plantingLogService = {
         createdAt: new Date().toISOString(),
       };
       return newLog;
+    }
+  },
+
+  updateLog: async (id: string, data: PlantingLogUpdateData): Promise<PlantingLog> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/planting-logs/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const result = await response.json();
+      if (result.code === 200 && result.data) {
+        return convertLog(result.data);
+      }
+      console.error('[plantingLogService] update failed:', result);
+      throw new Error(result.message || 'Update failed');
+    } catch (error) {
+      console.error('[plantingLogService] request failed:', error);
+      throw error;
+    }
+  },
+
+  deleteLog: async (id: string): Promise<boolean> => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/planting-logs/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const result = await response.json();
+      if (result.code === 200) {
+        return true;
+      }
+      console.error('[plantingLogService] delete failed:', result);
+      return false;
+    } catch (error) {
+      console.error('[plantingLogService] delete request failed:', error);
+      return false;
     }
   },
 };

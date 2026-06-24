@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, Alert } from 'react-native';
 import type { PlantingLog } from '../../../domain/types/planting-log.types';
 
 interface Props {
@@ -7,6 +7,8 @@ interface Props {
   logs: PlantingLog[];
   onClose: () => void;
   onAddLog: () => void;
+  onEditLog: (log: PlantingLog) => void;
+  onDeleteLog: (logId: string) => void;
 }
 
 // logType 中文映射
@@ -48,7 +50,22 @@ const getLogTypeTextStyle = (logType: string) => {
   }
 };
 
-export default function PlantingLogListModal({ visible, cropName, logs, onClose, onAddLog }: Props) {
+export default function PlantingLogListModal({ visible, cropName, logs, onClose, onAddLog, onEditLog, onDeleteLog }: Props) {
+  const handleDeleteLog = (logId: string, logContent: string) => {
+    Alert.alert(
+      '确认删除',
+      `确定要删除这条农事记录吗？\n\n"${logContent.substring(0, 30)}${logContent.length > 30 ? '...' : ''}"`,
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '删除',
+          style: 'destructive',
+          onPress: () => onDeleteLog(logId),
+        },
+      ]
+    );
+  };
+
   return (
     <Modal
       visible={visible}
@@ -85,25 +102,30 @@ export default function PlantingLogListModal({ visible, cropName, logs, onClose,
             ) : (
               <View style={styles.timeline}>
                 {logs.map((log) => (
-                  <TouchableOpacity key={log.id} style={styles.timelineItem} activeOpacity={0.8}>
-                    <View style={styles.timelineLine}>
-                      <View style={styles.timelineDot} />
-                    </View>
-                    <View style={styles.timelineContent}>
-                      <View style={styles.timelineHeader}>
-                        <Text style={styles.timelineDate}>{log.recordDate}</Text>
-                        <View style={[styles.timelineTypeBadge, getLogTypeBadgeStyle(log.logType)]}>
-                          <Text style={[styles.timelineTypeText, getLogTypeTextStyle(log.logType)]}>
-                            {LOG_TYPE_LABELS[log.logType] || log.logType}
-                          </Text>
-                        </View>
+                  <View key={log.id} style={styles.timelineItem}>
+                    <TouchableOpacity style={styles.timelineMain} onPress={() => onEditLog(log)} activeOpacity={0.8}>
+                      <View style={styles.timelineLine}>
+                        <View style={styles.timelineDot} />
                       </View>
-                      <Text style={styles.timelineContentText} numberOfLines={2}>
-                        {log.content}
-                      </Text>
-                    </View>
-                    <Text style={styles.timelineArrow}>›</Text>
-                  </TouchableOpacity>
+                      <View style={styles.timelineContent}>
+                        <View style={styles.timelineHeader}>
+                          <Text style={styles.timelineDate}>{log.recordDate}</Text>
+                          <View style={[styles.timelineTypeBadge, getLogTypeBadgeStyle(log.logType)]}>
+                            <Text style={[styles.timelineTypeText, getLogTypeTextStyle(log.logType)]}>
+                              {LOG_TYPE_LABELS[log.logType] || log.logType}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text style={styles.timelineContentText} numberOfLines={2}>
+                          {log.content}
+                        </Text>
+                      </View>
+                      <Text style={styles.timelineArrow}>›</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteLog(log.id, log.content)}>
+                      <Text style={styles.deleteButtonText}>删除</Text>
+                    </TouchableOpacity>
+                  </View>
                 ))}
               </View>
             )}
@@ -209,9 +231,14 @@ const styles = StyleSheet.create({
   },
   timelineItem: {
     flexDirection: 'row',
-    paddingVertical: 12,
+    alignItems: 'center',
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
+  },
+  timelineMain: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
   },
   timelineLine: {
@@ -258,5 +285,15 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: '#ddd',
     paddingRight: 8,
+  },
+  deleteButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginLeft: 4,
+  },
+  deleteButtonText: {
+    fontSize: 13,
+    color: '#EF5350',
+    fontWeight: '500',
   },
 });

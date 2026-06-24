@@ -66,4 +66,58 @@ public class PlantingLogService {
 
         return logDTO;
     }
+
+    public PlantingLogDTO updateLog(String id, PlantingLogDTO dto) {
+        // 校验必填字段
+        if (id == null || id.trim().isEmpty()) {
+            throw new IllegalArgumentException("id is required");
+        }
+        if (dto.getContent() == null || dto.getContent().trim().isEmpty()) {
+            throw new IllegalArgumentException("content is required");
+        }
+
+        // 获取原记录，以原记录 cropId 为准
+        var existingLog = plantingLogRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Planting log not found"));
+
+        // 设置默认值
+        if (dto.getLogType() == null || dto.getLogType().trim().isEmpty()) {
+            dto.setLogType("growth");
+        }
+        if (dto.getRecordDate() == null || dto.getRecordDate().trim().isEmpty()) {
+            dto.setRecordDate(LocalDateTime.now().format(DATE_FORMAT));
+        }
+        if (dto.getImages() == null) {
+            dto.setImages(new ArrayList<>());
+        }
+
+        // 更新时以原记录 cropId 为准，防止篡改
+        dto.setId(id);
+        dto.setCropId(existingLog.getCropId());
+        dto.setCropName(existingLog.getCropName());
+        dto.setUserId(existingLog.getUserId());
+        dto.setRemark(dto.getRemark() != null ? dto.getRemark() : existingLog.getRemark());
+
+        // 执行更新
+        int rows = plantingLogRepository.update(id, dto);
+        if (rows == 0) {
+            throw new IllegalArgumentException("Planting log not found");
+        }
+
+        // 返回数据库真实数据
+        return plantingLogRepository.findById(id).orElse(null);
+    }
+
+    public boolean deleteLog(String id) {
+        if (id == null || id.trim().isEmpty()) {
+            throw new IllegalArgumentException("id is required");
+        }
+
+        int rows = plantingLogRepository.softDelete(id);
+        if (rows == 0) {
+            throw new IllegalArgumentException("Planting log not found");
+        }
+
+        return true;
+    }
 }

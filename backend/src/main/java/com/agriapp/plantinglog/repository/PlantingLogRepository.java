@@ -14,6 +14,7 @@ import java.sql.Timestamp;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 @Profile("local")
@@ -40,6 +41,7 @@ public class PlantingLogRepository {
             log.setLogType(rs.getString("log_type"));
             log.setRecordDate(rs.getDate("record_date").toString());
             log.setContent(rs.getString("content"));
+            log.setRemark(rs.getString("remark"));
 
             // images_json 转换为 ArrayList<String>
             String imagesJson = rs.getString("images_json");
@@ -66,7 +68,7 @@ public class PlantingLogRepository {
 
     public List<PlantingLogDTO> findByCropId(String cropId) {
         String sql = """
-            SELECT id, user_id, crop_id, crop_name, log_type, record_date, content, images_json, created_at
+            SELECT id, user_id, crop_id, crop_name, log_type, record_date, content, images_json, remark, created_at
             FROM agri_planting_log
             WHERE crop_id = ? AND deleted = 0
             ORDER BY record_date DESC, created_at DESC
@@ -102,7 +104,49 @@ public class PlantingLogRepository {
                 log.getContent(),
                 imagesJson,
                 "manual",       // source_type
-                null            // remark
+                log.getRemark() // remark
         );
+    }
+
+    public Optional<PlantingLogDTO> findById(String id) {
+        String sql = """
+            SELECT id, user_id, crop_id, crop_name, log_type, record_date, content, images_json, remark, created_at
+            FROM agri_planting_log
+            WHERE id = ? AND deleted = 0
+            """;
+        List<PlantingLogDTO> results = jdbcTemplate.query(sql, ROW_MAPPER, id);
+        return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
+    }
+
+    public int update(String id, PlantingLogDTO log) {
+        String sql = """
+            UPDATE agri_planting_log
+            SET log_type = ?, record_date = ?, content = ?, images_json = ?, remark = ?
+            WHERE id = ? AND deleted = 0
+            """;
+
+        // images 转换为 JSON 字符串
+        String imagesJson = null;
+        if (log.getImages() != null && !log.getImages().isEmpty()) {
+            try {
+                imagesJson = objectMapper.writeValueAsString(log.getImages());
+            } catch (Exception e) {
+                imagesJson = null;
+            }
+        }
+
+        return jdbcTemplate.update(sql,
+                log.getLogType(),
+                log.getRecordDate(),
+                log.getContent(),
+                imagesJson,
+                log.getRemark(),
+                id
+        );
+    }
+
+    public int softDelete(String id) {
+        String sql = "UPDATE agri_planting_log SET deleted = 1 WHERE id = ? AND deleted = 0";
+        return jdbcTemplate.update(sql, id);
     }
 }

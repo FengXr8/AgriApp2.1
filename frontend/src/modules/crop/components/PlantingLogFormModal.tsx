@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,13 +11,14 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import type { LogType } from '../../../domain/types/planting-log.types';
+import type { LogType, PlantingLog } from '../../../domain/types/planting-log.types';
 import CalendarDatePicker from './CalendarDatePicker';
 
 interface Props {
   visible: boolean;
   onClose: () => void;
   onSubmit: (data: { logType: LogType; recordDate: string; content: string }) => Promise<void>;
+  editingLog?: PlantingLog | null;
 }
 
 const LOG_TYPE_OPTIONS: { value: LogType; label: string }[] = [
@@ -57,25 +58,52 @@ const getLogTypeTextStyle = (logType: LogType) => {
   }
 };
 
-export default function PlantingLogFormModal({ visible, onClose, onSubmit }: Props) {
-  const [logType, setLogType] = useState<LogType>('growth');
+export default function PlantingLogFormModal({ visible, onClose, onSubmit, editingLog }: Props) {
+  const isEditMode = !!editingLog;
+
+  const [logType, setLogType] = useState<LogType>(editingLog?.logType || 'growth');
   const [recordDate, setRecordDate] = useState(() => {
+    if (editingLog?.recordDate) {
+      return editingLog.recordDate;
+    }
     const today = new Date();
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   });
-  const [content, setContent] = useState('');
+  const [content, setContent] = useState(editingLog?.content || '');
+
+  useEffect(() => {
+    if (visible) {
+      if (editingLog) {
+        setLogType(editingLog.logType);
+        setRecordDate(editingLog.recordDate);
+        setContent(editingLog.content);
+      } else {
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        setLogType('growth');
+        setRecordDate(`${year}-${month}-${day}`);
+        setContent('');
+      }
+    }
+  }, [visible, editingLog]);
 
   const handleReset = () => {
-    setLogType('growth');
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    setRecordDate(`${year}-${month}-${day}`);
-    setContent('');
+    setLogType(editingLog?.logType || 'growth');
+    if (editingLog?.recordDate) {
+      setRecordDate(editingLog.recordDate);
+    } else {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      setRecordDate(`${year}-${month}-${day}`);
+    }
+    setContent(editingLog?.content || '');
   };
 
   const handleSubmit = async () => {
@@ -85,7 +113,9 @@ export default function PlantingLogFormModal({ visible, onClose, onSubmit }: Pro
     }
     try {
       await onSubmit({ logType, recordDate, content });
-      handleReset();
+      if (!isEditMode) {
+        handleReset();
+      }
       onClose();
     } catch (error) {
       // 不关闭弹窗，让 CropScreen 负责提示错误
@@ -111,7 +141,7 @@ export default function PlantingLogFormModal({ visible, onClose, onSubmit }: Pro
         <View style={styles.overlay}>
           <View style={styles.content}>
             <View style={styles.header}>
-            <Text style={styles.title}>记一笔农事</Text>
+            <Text style={styles.title}>{isEditMode ? '编辑农事记录' : '记一笔农事'}</Text>
             <TouchableOpacity onPress={handleCancel}>
               <Text style={styles.close}>✕</Text>
             </TouchableOpacity>
@@ -167,7 +197,7 @@ export default function PlantingLogFormModal({ visible, onClose, onSubmit }: Pro
                 <Text style={styles.cancelButtonText}>取消</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.saveButton} onPress={handleSubmit}>
-                <Text style={styles.saveButtonText}>保存</Text>
+                <Text style={styles.saveButtonText}>{isEditMode ? '保存修改' : '保存'}</Text>
               </TouchableOpacity>
             </View>
           </View>

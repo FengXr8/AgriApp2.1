@@ -132,4 +132,36 @@ public class MockPlantingLogController {
         logStore.put(newId, logDTO);
         return ApiResponse.success(logDTO);
     }
+
+    /**
+     * 更新种植日志
+     */
+    @PutMapping("/{id}")
+    public ApiResponse<PlantingLogDTO> updateLog(@PathVariable String id, @RequestBody PlantingLogDTO logDTO) {
+        PlantingLogDTO existing = logStore.get(id);
+        if (existing == null) {
+            return ApiResponse.error(404, "Planting log not found");
+        }
+        // 更新字段，保持原有的 id、cropId、userId、cropName、createdAt
+        existing.setLogType(logDTO.getLogType() != null ? logDTO.getLogType() : existing.getLogType());
+        existing.setRecordDate(logDTO.getRecordDate() != null ? logDTO.getRecordDate() : existing.getRecordDate());
+        existing.setContent(logDTO.getContent() != null ? logDTO.getContent() : existing.getContent());
+        if (logDTO.getImages() != null) {
+            existing.setImages(logDTO.getImages());
+        }
+        existing.setRemark(logDTO.getRemark() != null ? logDTO.getRemark() : existing.getRemark());
+        return ApiResponse.success(existing);
+    }
+
+    /**
+     * 删除种植日志
+     */
+    @DeleteMapping("/{id}")
+    public ApiResponse<Boolean> deleteLog(@PathVariable String id) {
+        if (logStore.containsKey(id)) {
+            logStore.remove(id);
+            return ApiResponse.success(true);
+        }
+        return ApiResponse.error(404, "Planting log not found");
+    }
 }
