@@ -14,3 +14,16 @@ logging:
   level:
     root: INFO
     com.agriapp: DEBUG
+
+agri:
+  ai:
+    provider: ${AGRI_AI_PROVIDER:mock}
+    diagnosis-mode: ${AGRI_AI_DIAGNOSIS_MODE:two-pass}
+    max-history: ${AGRI_AI_MAX_HISTORY:10}
+    max-images: ${AGRI_AI_MAX_IMAGES:3}
+    doubao:
+      api-key: ${ARK_API_KEY:}
+      base-url: ${ARK_BASE_URL:https://ark.cn-beijing.volces.com/api/v3}
+      text-model: ${ARK_TEXT_MODEL:${DOUBAO_MODEL:}}
+      vision-model: ${ARK_VISION_MODEL:}
+      timeout-seconds: 30

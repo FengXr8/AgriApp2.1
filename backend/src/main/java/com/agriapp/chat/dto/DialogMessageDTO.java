@@ -1,10 +1,5 @@
 package com.agriapp.chat.dto;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-
-/**
- * 对话消息 DTO
- */
 public class DialogMessageDTO {
 
     private String id;
@@ -12,12 +7,12 @@ public class DialogMessageDTO {
     private String sender;
     private String content;
     private String type;
+    private String provider;
+    private String model;
+    private String clientRequestId;
     private Object structuredContent;
-
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     private String createdAt;
 
-    // Getter and Setter
     public String getId() {
         return id;
     }
@@ -56,6 +51,30 @@ public class DialogMessageDTO {
 
     public void setType(String type) {
         this.type = type;
+    }
+
+    public String getProvider() {
+        return provider;
+    }
+
+    public void setProvider(String provider) {
+        this.provider = provider;
+    }
+
+    public String getModel() {
+        return model;
+    }
+
+    public void setModel(String model) {
+        this.model = model;
+    }
+
+    public String getClientRequestId() {
+        return clientRequestId;
+    }
+
+    public void setClientRequestId(String clientRequestId) {
+        this.clientRequestId = clientRequestId;
     }
 
     public Object getStructuredContent() {

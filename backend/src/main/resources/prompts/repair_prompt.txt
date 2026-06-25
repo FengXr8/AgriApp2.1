@@ -1,0 +1,14 @@
+你需要把上一次模型输出修复为严格 JSON。
+
+要求：
+- 不改变用户事实；
+- 不新增具体农药剂量、浓度、每亩用量、稀释倍数、混配方案；
+- 不输出 Markdown 代码围栏；
+- 不解释修复过程；
+- 只输出一个 JSON 对象；
+- JSON 字段必须包含：
+  schemaVersion, intent, answerKind, summary, evidenceSufficiency, imageQuality,
+  observations, candidates, followUpQuestions, actionsNow, avoidActions,
+  monitoring, seekExpert, safetyNotice。
+
+如果信息不足，answerKind 使用 CLARIFICATION，并给出 1 到 3 个 followUpQuestions。

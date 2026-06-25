@@ -1,33 +1,42 @@
 package com.agriapp.chat.dto;
 
-import com.fasterxml.jackson.annotation.JsonFormat;
-
 import java.util.List;
 
-/**
- * 智能对话 DTO
- */
 public class IntelligentDialogDTO {
 
     private String id;
+    private String userId;
+    private String roleType;
     private String title;
     private String status;
     private List<DialogMessageDTO> messages;
     private String lastMessageTime;
-
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
+    private String startTime;
     private String createdAt;
-
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
     private String updatedAt;
 
-    // Getter and Setter
     public String getId() {
         return id;
     }
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public String getUserId() {
+        return userId;
+    }
+
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+
+    public String getRoleType() {
+        return roleType;
+    }
+
+    public void setRoleType(String roleType) {
+        this.roleType = roleType;
     }
 
     public String getTitle() {
@@ -60,6 +69,14 @@ public class IntelligentDialogDTO {
 
     public void setLastMessageTime(String lastMessageTime) {
         this.lastMessageTime = lastMessageTime;
+    }
+
+    public String getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(String startTime) {
+        this.startTime = startTime;
     }
 
     public String getCreatedAt() {
