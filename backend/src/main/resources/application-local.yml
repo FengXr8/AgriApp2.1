@@ -3,9 +3,9 @@ spring:
     activate:
       on-profile: local
   datasource:
-    url: jdbc:mysql://localhost:3307/agriapp?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
-    username: root
-    password: root
+    url: ${AGRI_DB_URL:jdbc:mysql://localhost:3307/agri_app?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${AGRI_DB_USERNAME:agriapp}
+    password: ${AGRI_DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
   flyway:
     locations:
