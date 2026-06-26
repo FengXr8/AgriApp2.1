@@ -1,0 +1,41 @@
+# dependencies
+node_modules/
+frontend/node_modules/
+
+# Expo
+.expo/
+.expo-shared/
+dist/
+web-build/
+
+# React Native / Metro
+.metro-cache/
+
+# Java / Maven
+target/
+backend/target/
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# env
+.env
+.env.*
+
+# local AI agent config
+.claude/
+.agents/
+
+# Obsidian
+.obsidian/
