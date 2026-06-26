@@ -1,20 +1,24 @@
 INSERT IGNORE INTO agri_ai_dialog
-  (id, user_id, role_type, title, status, context_json, last_message_at, created_at, updated_at, deleted)
+  (id, user_id, role_type, scene, title, status, context_json, last_message_at, created_at, updated_at, deleted)
 VALUES
-  ('dialog_001', 'user_001', 'expert', '农业病虫害辅助问答', 'active', NULL, '2026-06-26 09:00:00.000', '2026-06-26 09:00:00.000', '2026-06-26 09:00:00.000', 0);
+  ('dialog_001', 'user_001', 'expert', 'diagnosis', '农业病虫害辅助问答', 'active', NULL, '2026-06-26 09:00:00.000', '2026-06-26 09:00:00.000', '2026-06-26 09:00:00.000', 0);
 
 INSERT IGNORE INTO agri_ai_message
-  (id, dialog_id, sender, message_type, content, provider, model, client_request_id, structured_content, created_at, deleted)
+  (id, dialog_id, sender, message_type, content, provider, model, prompt_version, client_request_id, context_snapshot, recognition_snapshot, structured_content, created_at, updated_at, deleted)
 VALUES
   ('msg_ai_seed_001', 'dialog_001', 'ai', 'text',
    '你好，我是农业病虫害辅助问答助手。请描述作物、受害部位和症状，我会先帮你做初步排查。',
-   'mock', 'mock-agri-diagnosis-v1', 'seed_welcome', NULL, '2026-06-26 09:00:00.000', 0),
+   'mock', 'mock-agri-diagnosis-v1', 'mock-v1', 'seed_welcome', NULL, NULL, NULL, '2026-06-26 09:00:00.000', '2026-06-26 09:00:00.000', 0),
   ('msg_user_seed_002', 'dialog_001', 'user', 'text',
    '番茄叶片出现褐色斑点，最近连续阴雨。',
-   NULL, NULL, 'seed_user_002', NULL, '2026-06-26 09:01:00.000', 0),
+   NULL, NULL, NULL, 'seed_user_002',
+   JSON_OBJECT('cropName', '番茄', 'affectedPart', 'leaf', 'symptomDescription', '叶片出现褐色斑点', 'recentWeather', '连续阴雨'),
+   NULL, NULL, '2026-06-26 09:01:00.000', '2026-06-26 09:01:00.000', 0),
   ('msg_ai_seed_003', 'dialog_001', 'ai', 'text',
    '当前只能做初步辅助判断。请补充叶片正反面照片、扩散速度和受害范围。',
-   'mock', 'mock-agri-diagnosis-v1', 'seed_user_002',
+   'mock', 'mock-agri-diagnosis-v1', 'mock-v1', 'seed_user_002',
+   JSON_OBJECT('cropName', '番茄', 'affectedPart', 'leaf', 'symptomDescription', '叶片出现褐色斑点', 'recentWeather', '连续阴雨'),
+   NULL,
    JSON_OBJECT(
      'schemaVersion', '1.0',
      'intent', 'PEST_DIAGNOSIS',
@@ -31,4 +35,4 @@ VALUES
      'seekExpert', JSON_OBJECT('required', false, 'reason', NULL),
      'safetyNotice', '本建议用于初步排查，不能替代现场农技诊断。'
    ),
-   '2026-06-26 09:02:00.000', 0);
+   '2026-06-26 09:02:00.000', '2026-06-26 09:02:00.000', 0);

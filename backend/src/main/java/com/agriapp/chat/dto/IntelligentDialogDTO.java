@@ -7,8 +7,10 @@ public class IntelligentDialogDTO {
     private String id;
     private String userId;
     private String roleType;
+    private String scene;
     private String title;
     private String status;
+    private Object contextJson;
     private List<DialogMessageDTO> messages;
     private String lastMessageTime;
     private String startTime;
@@ -39,6 +41,14 @@ public class IntelligentDialogDTO {
         this.roleType = roleType;
     }
 
+    public String getScene() {
+        return scene;
+    }
+
+    public void setScene(String scene) {
+        this.scene = scene;
+    }
+
     public String getTitle() {
         return title;
     }
@@ -53,6 +63,14 @@ public class IntelligentDialogDTO {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public Object getContextJson() {
+        return contextJson;
+    }
+
+    public void setContextJson(Object contextJson) {
+        this.contextJson = contextJson;
     }
 
     public List<DialogMessageDTO> getMessages() {

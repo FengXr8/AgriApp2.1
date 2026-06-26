@@ -19,14 +19,17 @@ public class InMemoryMessageRepository implements MessageRepository {
     private final ConcurrentHashMap<String, DialogMessageDTO> messages = new ConcurrentHashMap<>();
 
     public InMemoryMessageRepository() {
+        String now = now();
         DialogMessageDTO welcome = new DialogMessageDTO();
         welcome.setId("msg_001");
         welcome.setDialogId("dialog_001");
         welcome.setSender("ai");
         welcome.setType("text");
         welcome.setProvider("mock");
-        welcome.setContent("你好，我是农业病虫害辅助问答助手。请描述作物、受害部位和症状，我会先帮你做初步排查。");
-        welcome.setCreatedAt(now());
+        welcome.setPromptVersion("agri-ai-v1");
+        welcome.setContent("Hello, I am the agricultural diagnosis chat assistant. Please describe the crop, affected part, and symptom.");
+        welcome.setCreatedAt(now);
+        welcome.setUpdatedAt(now);
         messages.put(welcome.getId(), welcome);
     }
 

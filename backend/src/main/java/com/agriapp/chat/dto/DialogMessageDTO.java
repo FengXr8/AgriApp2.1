@@ -9,9 +9,13 @@ public class DialogMessageDTO {
     private String type;
     private String provider;
     private String model;
+    private String promptVersion;
     private String clientRequestId;
+    private Object contextSnapshot;
+    private Object recognitionSnapshot;
     private Object structuredContent;
     private String createdAt;
+    private String updatedAt;
 
     public String getId() {
         return id;
@@ -69,12 +73,36 @@ public class DialogMessageDTO {
         this.model = model;
     }
 
+    public String getPromptVersion() {
+        return promptVersion;
+    }
+
+    public void setPromptVersion(String promptVersion) {
+        this.promptVersion = promptVersion;
+    }
+
     public String getClientRequestId() {
         return clientRequestId;
     }
 
     public void setClientRequestId(String clientRequestId) {
         this.clientRequestId = clientRequestId;
+    }
+
+    public Object getContextSnapshot() {
+        return contextSnapshot;
+    }
+
+    public void setContextSnapshot(Object contextSnapshot) {
+        this.contextSnapshot = contextSnapshot;
+    }
+
+    public Object getRecognitionSnapshot() {
+        return recognitionSnapshot;
+    }
+
+    public void setRecognitionSnapshot(Object recognitionSnapshot) {
+        this.recognitionSnapshot = recognitionSnapshot;
     }
 
     public Object getStructuredContent() {
@@ -91,5 +119,13 @@ public class DialogMessageDTO {
 
     public void setCreatedAt(String createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(String updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }

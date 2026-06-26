@@ -21,7 +21,8 @@ public class InMemoryDialogRepository implements DialogRepository {
         dialog.setId("dialog_001");
         dialog.setUserId("user_001");
         dialog.setRoleType("expert");
-        dialog.setTitle("农业病虫害辅助问答");
+        dialog.setScene("diagnosis");
+        dialog.setTitle("Agricultural diagnosis chat");
         dialog.setStatus("active");
         String now = now();
         dialog.setStartTime(now);

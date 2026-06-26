@@ -28,13 +28,19 @@ public class JdbcMessageRepository implements MessageRepository {
     public DialogMessageDTO save(DialogMessageDTO message) {
         jdbcTemplate.update("""
                         INSERT INTO agri_ai_message
-                          (id, dialog_id, sender, message_type, content, provider, model, client_request_id, structured_content, created_at, deleted)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                          (id, dialog_id, sender, message_type, content, structured_content,
+                           context_snapshot, recognition_snapshot, provider, model, prompt_version,
+                           client_request_id, created_at, updated_at, deleted)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                         ON DUPLICATE KEY UPDATE
                           content = VALUES(content),
+                          structured_content = VALUES(structured_content),
+                          context_snapshot = VALUES(context_snapshot),
+                          recognition_snapshot = VALUES(recognition_snapshot),
                           provider = VALUES(provider),
                           model = VALUES(model),
-                          structured_content = VALUES(structured_content),
+                          prompt_version = VALUES(prompt_version),
+                          updated_at = VALUES(updated_at),
                           deleted = 0
                         """,
                 message.getId(),
@@ -42,19 +48,24 @@ public class JdbcMessageRepository implements MessageRepository {
                 message.getSender(),
                 defaultValue(message.getType(), "text"),
                 message.getContent(),
+                toJson(message.getStructuredContent(), "structuredContent"),
+                toJson(message.getContextSnapshot(), "contextSnapshot"),
+                toJson(message.getRecognitionSnapshot(), "recognitionSnapshot"),
                 message.getProvider(),
                 message.getModel(),
+                message.getPromptVersion(),
                 message.getClientRequestId(),
-                toJson(message.getStructuredContent()),
-                message.getCreatedAt());
+                message.getCreatedAt(),
+                defaultValue(message.getUpdatedAt(), message.getCreatedAt()));
         return message;
     }
 
     @Override
     public List<DialogMessageDTO> findByDialogId(String dialogId) {
         return jdbcTemplate.query("""
-                        SELECT id, dialog_id, sender, message_type, content, provider, model,
-                               client_request_id, structured_content, created_at
+                        SELECT id, dialog_id, sender, message_type, content, structured_content,
+                               context_snapshot, recognition_snapshot, provider, model, prompt_version,
+                               client_request_id, created_at, updated_at
                         FROM agri_ai_message
                         WHERE dialog_id = ? AND deleted = 0
                         ORDER BY created_at ASC, id ASC
@@ -67,8 +78,9 @@ public class JdbcMessageRepository implements MessageRepository {
     public List<DialogMessageDTO> findRecent(String dialogId, int limit) {
         return jdbcTemplate.query("""
                         SELECT * FROM (
-                          SELECT id, dialog_id, sender, message_type, content, provider, model,
-                                 client_request_id, structured_content, created_at
+                          SELECT id, dialog_id, sender, message_type, content, structured_content,
+                                 context_snapshot, recognition_snapshot, provider, model, prompt_version,
+                                 client_request_id, created_at, updated_at
                           FROM agri_ai_message
                           WHERE dialog_id = ? AND deleted = 0
                           ORDER BY created_at DESC, id DESC
@@ -87,8 +99,9 @@ public class JdbcMessageRepository implements MessageRepository {
             return Optional.empty();
         }
         return jdbcTemplate.query("""
-                        SELECT id, dialog_id, sender, message_type, content, provider, model,
-                               client_request_id, structured_content, created_at
+                        SELECT id, dialog_id, sender, message_type, content, structured_content,
+                               context_snapshot, recognition_snapshot, provider, model, prompt_version,
+                               client_request_id, created_at, updated_at
                         FROM agri_ai_message
                         WHERE dialog_id = ? AND client_request_id = ? AND sender = 'ai' AND deleted = 0
                         ORDER BY created_at DESC
@@ -106,22 +119,26 @@ public class JdbcMessageRepository implements MessageRepository {
         message.setSender(rs.getString("sender"));
         message.setType(rs.getString("message_type"));
         message.setContent(rs.getString("content"));
+        message.setStructuredContent(fromJson(rs.getString("structured_content")));
+        message.setContextSnapshot(fromJson(rs.getString("context_snapshot")));
+        message.setRecognitionSnapshot(fromJson(rs.getString("recognition_snapshot")));
         message.setProvider(rs.getString("provider"));
         message.setModel(rs.getString("model"));
+        message.setPromptVersion(rs.getString("prompt_version"));
         message.setClientRequestId(rs.getString("client_request_id"));
-        message.setStructuredContent(fromJson(rs.getString("structured_content")));
         message.setCreatedAt(rs.getString("created_at"));
+        message.setUpdatedAt(rs.getString("updated_at"));
         return message;
     }
 
-    private String toJson(Object value) {
+    private String toJson(Object value, String fieldName) {
         if (value == null) {
             return null;
         }
         try {
             return objectMapper.writeValueAsString(value);
         } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("structuredContent cannot be serialized", e);
+            throw new IllegalArgumentException(fieldName + " cannot be serialized", e);
         }
     }
 

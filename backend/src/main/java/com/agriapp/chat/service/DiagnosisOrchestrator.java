@@ -18,18 +18,18 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 public class DiagnosisOrchestrator {
+
+    private static final String SCENE_DIAGNOSIS = "diagnosis";
+    private static final String PROMPT_VERSION = "agri-ai-v1";
 
     private final DialogRepository dialogRepository;
     private final MessageRepository messageRepository;
     private final ChatProvider chatProvider;
     private final ResponseGuard responseGuard;
     private final AiChatProperties properties;
-    private final AtomicLong dialogIdGenerator = new AtomicLong(100);
-    private final AtomicLong messageIdGenerator = new AtomicLong(1000);
 
     public DiagnosisOrchestrator(
             DialogRepository dialogRepository,
@@ -48,10 +48,11 @@ public class DiagnosisOrchestrator {
     public IntelligentDialogDTO createDialog(String roleType) {
         String timestamp = now();
         IntelligentDialogDTO dialog = new IntelligentDialogDTO();
-        dialog.setId("dialog_" + dialogIdGenerator.getAndIncrement());
+        dialog.setId(nextDialogId());
         dialog.setUserId("user_001");
         dialog.setRoleType(roleType == null || roleType.isBlank() ? "expert" : roleType);
-        dialog.setTitle("农业病虫害辅助问答");
+        dialog.setScene(SCENE_DIAGNOSIS);
+        dialog.setTitle("Agricultural diagnosis chat");
         dialog.setStatus("active");
         dialog.setStartTime(timestamp);
         dialog.setCreatedAt(timestamp);
@@ -85,8 +86,11 @@ public class DiagnosisOrchestrator {
         userMessage.setSender("user");
         userMessage.setType(defaultType(request.getType()));
         userMessage.setContent(request.getContent());
+        userMessage.setContextSnapshot(request.getContext());
+        userMessage.setRecognitionSnapshot(request.getRecognitionSnapshot());
         userMessage.setClientRequestId(clientRequestId);
         userMessage.setCreatedAt(timestamp);
+        userMessage.setUpdatedAt(timestamp);
         messageRepository.save(userMessage);
 
         ChatProviderRequest providerRequest = toProviderRequest(request);
@@ -102,6 +106,7 @@ public class DiagnosisOrchestrator {
             structuredAnswer = responseGuard.parseAndValidate(providerResponse.getRawContent());
         }
 
+        String aiCreatedAt = now();
         DialogMessageDTO aiMessage = new DialogMessageDTO();
         aiMessage.setId(nextMessageId());
         aiMessage.setDialogId(request.getDialogId());
@@ -109,12 +114,18 @@ public class DiagnosisOrchestrator {
         aiMessage.setType("text");
         aiMessage.setProvider(providerResponse.getProvider());
         aiMessage.setModel(providerResponse.getModel());
+        aiMessage.setPromptVersion(PROMPT_VERSION);
         aiMessage.setContent(responseGuard.toLegacyContent(structuredAnswer));
         aiMessage.setStructuredContent(structuredAnswer);
+        aiMessage.setContextSnapshot(request.getContext());
+        aiMessage.setRecognitionSnapshot(request.getRecognitionSnapshot());
         aiMessage.setClientRequestId(clientRequestId);
-        aiMessage.setCreatedAt(now());
+        aiMessage.setCreatedAt(aiCreatedAt);
+        aiMessage.setUpdatedAt(aiCreatedAt);
         messageRepository.save(aiMessage);
 
+        dialog.setScene(SCENE_DIAGNOSIS);
+        dialog.setContextJson(request.getContext());
         dialog.setUpdatedAt(aiMessage.getCreatedAt());
         dialog.setLastMessageTime(aiMessage.getCreatedAt().substring(11, 16));
         dialogRepository.save(dialog);
@@ -152,7 +163,11 @@ public class DiagnosisOrchestrator {
     }
 
     private String nextMessageId() {
-        return "msg_" + messageIdGenerator.getAndIncrement();
+        return "msg_" + UUID.randomUUID().toString().replace("-", "");
+    }
+
+    private String nextDialogId() {
+        return "dialog_" + UUID.randomUUID().toString().replace("-", "");
     }
 
     private String now() {
