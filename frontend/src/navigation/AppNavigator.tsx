@@ -7,6 +7,7 @@ import type { ComponentProps } from 'react';
 import HomeScreen from '../modules/home/screens/HomeScreen';
 import FarmDetailScreen from '../modules/home/screens/FarmDetailScreen';
 import ClimateDetailScreen from '../modules/home/screens/ClimateDetailScreen';
+import PlantingLogScreen from '../modules/planting-log/screens/PlantingLogScreen';
 import AIChatScreen from '../modules/ai/screens/AIChatScreen';
 import DiseaseScreen from '../modules/disease/screens/DiseaseScreen';
 import CropScreen from '../modules/crop/screens/CropScreen';
@@ -23,6 +24,7 @@ function HomeStackNavigator() {
       <HomeStack.Screen name="HomeMain" component={HomeScreen} />
       <HomeStack.Screen name="FarmDetail" component={FarmDetailScreen} />
       <HomeStack.Screen name="ClimateDetail" component={ClimateDetailScreen} />
+      <HomeStack.Screen name="PlantingLog" component={PlantingLogScreen} />
     </HomeStack.Navigator>
   );
 }

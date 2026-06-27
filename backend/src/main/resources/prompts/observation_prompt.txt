@@ -1,0 +1,23 @@
+阶段一：只做事实观察提取，不诊断病名。
+
+请从用户输入、补充上下文和 recognition 线索中提取可展示事实：
+- 作物；
+- 生长阶段；
+- 受害部位；
+- 症状；
+- 发生时间；
+- 扩散速度；
+- 图片质量或缺失情况；
+- 与 recognition 线索一致或冲突的事实。
+
+输出 JSON：
+{
+  "observations": [],
+  "missingInformation": [],
+  "imageQuality": {
+    "level": "not_applicable|poor|usable|good",
+    "issues": [],
+    "retakeSuggestions": []
+  },
+  "riskSignals": []
+}

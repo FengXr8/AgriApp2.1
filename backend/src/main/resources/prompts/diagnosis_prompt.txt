@@ -1,0 +1,16 @@
+阶段二：基于阶段一观察结果做差异诊断。
+
+输出必须符合以下 JSON 字段：
+schemaVersion, intent, answerKind, summary, evidenceSufficiency, imageQuality,
+observations, candidates, followUpQuestions, actionsNow, avoidActions,
+monitoring, seekExpert, safetyNotice。
+
+约束：
+- answerKind 只能是 CLARIFICATION、IMAGE_RETAKE、DIFFERENTIAL_DIAGNOSIS、GENERAL_ADVICE、SAFETY_ESCALATION、OUT_OF_SCOPE。
+- evidenceSufficiency 只能是 insufficient、partial、sufficient。
+- candidates 最多 3 个。
+- followUpQuestions 最多 3 个。
+- 信息不足时必须追问。
+- 图片质量差时 answerKind 使用 IMAGE_RETAKE，不输出 strong 候选。
+- 不输出任何具体农药剂量、浓度、稀释倍数、混配方案。
+- content 只放可给用户看的证据摘要，不输出隐藏推理过程。

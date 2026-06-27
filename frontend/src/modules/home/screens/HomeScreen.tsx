@@ -19,6 +19,7 @@ type HomeStackParamList = {
   HomeMain: undefined;
   FarmDetail: undefined;
   ClimateDetail: undefined;
+  PlantingLog: undefined;
 };
 
 export default function HomeScreen() {
@@ -76,8 +77,8 @@ export default function HomeScreen() {
   };
 
   const handleNavigate = (screenName: string) => {
-    if (screenName === 'log') {
-      Alert.alert('提示', '农事记录功能开发中');
+    if (screenName === 'PlantingLog') {
+      homeNavigation.navigate('PlantingLog');
       return;
     }
     navigation.navigate(screenName as keyof TabParamList);
@@ -95,7 +96,7 @@ export default function HomeScreen() {
     { name: '病虫害识别', icon: 'bug' as const, target: '病虫害识别', color: '#4CAF50' },
     { name: 'AI问答', icon: 'chatbubble-ellipses' as const, target: 'AI问答', color: '#2196F3' },
     { name: '作物管理', icon: 'leaf' as const, target: '作物管理', color: '#FF9800' },
-    { name: '农事记录', icon: 'document-text' as const, target: 'log', color: '#9C27B0' },
+    { name: '农事记录', icon: 'document-text' as const, target: 'PlantingLog', color: '#9C27B0' },
   ];
 
   if (loading) {
