@@ -43,7 +43,7 @@ export interface ClimateInfo {
   airQuality: string;
   solarTerm?: string;
   createdAt: string;
-  
+
   // 扩展字段
   province?: string;       // 省份
   district?: string;       // 区县
@@ -64,6 +64,7 @@ export interface FarmingSuggestion {
   content: string;
   cropTypes?: string[];
   createdAt: string;
+
   // 扩展字段（后端返回）
   date?: string;
   location?: string;

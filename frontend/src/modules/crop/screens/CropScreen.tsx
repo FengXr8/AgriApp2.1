@@ -1,129 +1,59 @@
-import { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert, Modal, TextInput, TouchableWithoutFeedback } from 'react-native';
+import { useState, useCallback, useMemo } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import type { Crop as DomainCrop, GrowthStage, CropStatus } from '../../../domain/types';
 import { cropService } from '../../../domain/services';
-
-interface Crop {
-  id: string;
-  name: string;
-  icon: string;
-  stage: string;
-  plantDate: string;
-  harvestDate?: string;
-  status: '正常' | '注意' | '成熟';
-}
-
-interface FormData {
-  name: string;
-  stage: string;
-  status: '正常' | '注意' | '成熟';
-  harvestDate: string;
-}
-
-const cropIcons = ['🌾', '🍅', '🌽', '🥬', '🥕', '🥔', '🌶️', '🍆', '🥒', '🍓'];
-
-const stageMap: Record<GrowthStage, string> = {
-  seedling: '幼苗期',
-  vegetative: '生长期',
-  flowering: '开花期',
-  fruiting: '结果期',
-  mature: '成熟期',
-};
-
-// 中文 stage 到枚举的逆向映射
-const reverseStageMap: Record<string, GrowthStage> = {
-  '幼苗期': 'seedling',
-  '生长期': 'vegetative',
-  '分蘖期': 'vegetative',
-  '开花期': 'flowering',
-  '结果期': 'fruiting',
-  '成熟期': 'mature',
-};
-
-const statusMap: Record<CropStatus, '正常' | '注意' | '成熟'> = {
-  planting: '正常',
-  harvested: '成熟',
-  ended: '注意',
-};
-
-// 中文 status 到枚举的逆向映射
-const reverseStatusMap: Record<string, CropStatus> = {
-  '正常': 'planting',
-  '注意': 'ended',
-  '成熟': 'harvested',
-};
-
-const getStatusColor = (status: string): string => {
-  switch (status) {
-    case '正常':
-      return '#4CAF50';
-    case '注意':
-      return '#FF9800';
-    case '成熟':
-      return '#E91E63';
-    default:
-      return '#999';
-  }
-};
-
-const getStatusStyle = (status: string) => {
-  switch (status) {
-    case '正常':
-      return { backgroundColor: '#4CAF50', dotColor: '#fff', textColor: '#fff' };
-    case '注意':
-      return { backgroundColor: '#FF9800', dotColor: '#FFD54F', textColor: '#fff' };
-    case '成熟':
-      return { backgroundColor: '#E91E63', dotColor: '#fff', textColor: '#fff' };
-    default:
-      return { backgroundColor: '#f5f5f5', dotColor: '#999', textColor: '#666' };
-  }
-};
-
-const calculateDays = (plantDate: string): number => {
-  const plant = new Date(plantDate);
-  const today = new Date();
-  const diffTime = today.getTime() - plant.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays >= 0 ? diffDays : 0;
-};
-
-type ModalMode = 'view' | 'edit' | 'add';
+import type { CropListItem, CropModalMode, FormData, QuickStatusFilter, CropStats, AdvancedStatusFilter } from '../types/crop-ui.types';
+import type { PlantingLog, LogType } from '../../../domain/types/planting-log.types';
+import { plantingLogService } from '../../../domain/services/planting-log.service';
+import {
+  domainCropToListItem,
+  getCropStats,
+  getPlotDisplayName,
+} from '../utils/cropDisplay';
+import {
+  createEmptyCropFormData,
+  cropToFormData,
+  validateCropForm,
+  formDataToCreatePayload,
+  formDataToUpdatePayload,
+} from '../utils/cropForm';
+import CropStatusTabs from '../components/CropStatusTabs';
+import CropSearchBar from '../components/CropSearchBar';
+import CropCard from '../components/CropCard';
+import CropFilterModal from '../components/CropFilterModal';
+import CropDetailModal from '../components/CropDetailModal';
+import CropFormModal from '../components/CropFormModal';
+import PlantingLogListModal from '../components/PlantingLogListModal';
+import PlantingLogFormModal from '../components/PlantingLogFormModal';
 
 export default function CropScreen() {
-  const [crops, setCrops] = useState<Crop[]>([]);
+  const [crops, setCrops] = useState<CropListItem[]>([]);
   const [searchText, setSearchText] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'全部' | '正常' | '注意' | '成熟'>('全部');
-  const [selectedCrop, setSelectedCrop] = useState<Crop | null>(null);
-  const [modalMode, setModalMode] = useState<ModalMode>('view');
+  const [quickStatusFilter, setQuickStatusFilter] = useState<QuickStatusFilter>('全部');
+  const [selectedCrop, setSelectedCrop] = useState<CropListItem | null>(null);
+  const [modalMode, setModalMode] = useState<CropModalMode>('view');
   const [modalVisible, setModalVisible] = useState(false);
-  const [formData, setFormData] = useState<FormData>({
-    name: '',
-    stage: '',
-    status: '正常',
-    harvestDate: '',
-  });
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [selectedPlot, setSelectedPlot] = useState<string>('全部地块');
+  const [selectedAdvancedStatus, setSelectedAdvancedStatus] = useState<AdvancedStatusFilter>('全部状态');
+  const [formData, setFormData] = useState<FormData>(createEmptyCropFormData());
   const [selectedIcon, setSelectedIcon] = useState('🌾');
+  const [formErrors, setFormErrors] = useState<Partial<Record<keyof FormData, string>>>({});
   const [loading, setLoading] = useState(true);
+  const [cropLogs, setCropLogs] = useState<PlantingLog[]>([]);
+  const [logListModalVisible, setLogListModalVisible] = useState(false);
+  const [plantingLogFormVisible, setPlantingLogFormVisible] = useState(false);
+  const [editingLog, setEditingLog] = useState<PlantingLog | null>(null);
 
   const fetchCrops = async () => {
     setLoading(true);
     try {
       const domainCrops = await cropService.getCrops();
 
-      const convertedCrops: Crop[] = domainCrops
+      const convertedCrops: CropListItem[] = domainCrops
         .sort((a, b) => a.id.localeCompare(b.id))
-        .map(crop => ({
-          id: crop.id,
-          name: crop.name,
-          icon: crop.icon,
-          stage: stageMap[crop.stage],
-          plantDate: crop.plantDate,
-          harvestDate: crop.harvestDate,
-          status: statusMap[crop.status],
-        }));
+        .map(domainCropToListItem);
 
       setCrops(convertedCrops);
     } catch (error) {
@@ -139,39 +69,81 @@ export default function CropScreen() {
     }, [])
   );
 
-  const filteredCrops = crops.filter((crop) => {
-    const matchesSearch = crop.name
-      .toLowerCase()
-      .includes(searchText.trim().toLowerCase());
+  const stats: CropStats = useMemo(() => getCropStats(crops), [crops]);
 
-    const matchesStatus =
-      statusFilter === '全部' || crop.status === statusFilter;
+  const plotOptions = useMemo(() => {
+    const plots = new Set(crops.map((c) => getPlotDisplayName(c.plotId)));
+    return ['全部地块', ...Array.from(plots)];
+  }, [crops]);
 
-    return matchesSearch && matchesStatus;
-  });
+  const filteredCrops = useMemo(() => {
+    return crops.filter((crop) => {
+      const searchQuery = searchText.trim().toLowerCase();
+      const matchesSearch =
+        crop.name.toLowerCase().includes(searchQuery) ||
+        (crop.variety && crop.variety.toLowerCase().includes(searchQuery));
 
-  const handleCropPress = (crop: Crop) => {
-    setSelectedCrop(crop);
-    setFormData({
-      name: crop.name,
-      stage: crop.stage,
-      status: crop.status,
-      harvestDate: crop.harvestDate || '',
+      let matchesQuick = true;
+      if (quickStatusFilter === '正常') {
+        matchesQuick = crop.status === '正常' || crop.status === '种植中';
+      } else if (quickStatusFilter === '待处理') {
+        matchesQuick = crop.status === '需浇水' || crop.status === '需施肥' || crop.status === '病虫风险';
+      }
+
+      const matchesPlot = selectedPlot === '全部地块' || getPlotDisplayName(crop.plotId) === selectedPlot;
+
+      let matchesAdvanced = true;
+      if (selectedAdvancedStatus !== '全部状态') {
+        if (selectedAdvancedStatus === '已结束') {
+          matchesAdvanced = crop.statusKey === 'ended' || crop.statusKey === 'harvested';
+        } else {
+          matchesAdvanced = crop.status === selectedAdvancedStatus;
+        }
+      }
+
+      return matchesSearch && matchesQuick && matchesPlot && matchesAdvanced;
     });
+  }, [crops, searchText, quickStatusFilter, selectedPlot, selectedAdvancedStatus]);
+
+  const getFilterCount = (): number => {
+    let count = 0;
+    if (selectedPlot !== '全部地块') count++;
+    if (selectedAdvancedStatus !== '全部状态') count++;
+    return count;
+  };
+
+  const handleClearFilters = () => {
+    setSelectedPlot('全部地块');
+    setSelectedAdvancedStatus('全部状态');
+  };
+
+  const handleCropPress = async (crop: CropListItem) => {
+    setSelectedCrop(crop);
+    setFormData(cropToFormData(crop));
     setSelectedIcon(crop.icon);
+    setFormErrors({});
     setModalMode('view');
     setModalVisible(true);
+
+    // 加载该作物的种植记录
+    setCropLogs([]); // 先清空，避免短暂显示上一个作物的记录
+    try {
+      const logs = await plantingLogService.getLogsByCrop(crop.id);
+      // 按 cropId 过滤并按 createdAt 倒序排序
+      const filteredLogs = logs
+        .filter((log) => log.cropId === crop.id)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setCropLogs(filteredLogs);
+    } catch {
+      setCropLogs([]);
+    }
   };
 
   const handleAddCrop = () => {
     setSelectedCrop(null);
-    setFormData({
-      name: '',
-      stage: '',
-      status: '正常',
-      harvestDate: '',
-    });
+    setFormData(createEmptyCropFormData());
     setSelectedIcon('🌾');
+    setFormErrors({});
     setModalMode('add');
     setModalVisible(true);
   };
@@ -207,39 +179,109 @@ export default function CropScreen() {
     );
   };
 
-  const handleSave = async () => {
-    if (!formData.name.trim() || !formData.stage.trim()) {
-      Alert.alert('提示', '请填写作物名称和生长期');
+  const handleViewAllLogs = () => {
+    setLogListModalVisible(true);
+  };
+
+  const handleAddLog = () => {
+    setEditingLog(null);
+    setPlantingLogFormVisible(true);
+  };
+
+  const handleEditLog = (log: PlantingLog) => {
+    setEditingLog(log);
+    setPlantingLogFormVisible(true);
+  };
+
+  const handleDeleteLog = async (logId: string) => {
+    try {
+      const success = await plantingLogService.deleteLog(logId);
+      if (success && selectedCrop) {
+        const logs = await plantingLogService.getLogsByCrop(selectedCrop.id);
+        const filteredLogs = logs
+          .filter((log) => log.cropId === selectedCrop.id)
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setCropLogs(filteredLogs);
+        Alert.alert('成功', '记录已删除');
+      } else {
+        Alert.alert('删除失败', '请稍后重试');
+      }
+    } catch (error) {
+      console.error('[CropScreen] Failed to delete log:', error);
+      Alert.alert('删除失败', '请稍后重试');
+    }
+  };
+
+  const handleSubmitLog = async (data: { logType: LogType; recordDate: string; content: string }) => {
+    if (!selectedCrop) {
+      Alert.alert('提示', '请先选择作物');
       return;
     }
 
-    // 将中文转换为枚举值
-    const domainStage = reverseStageMap[formData.stage.trim()] || 'seedling';
-    const domainStatus = reverseStatusMap[formData.status] || 'planting';
+    try {
+      if (editingLog) {
+        // 编辑模式
+        await plantingLogService.updateLog(editingLog.id, {
+          logType: data.logType,
+          recordDate: data.recordDate,
+          content: data.content,
+          images: editingLog.images || [],
+        });
+        Alert.alert('成功', '记录已修改');
+      } else {
+        // 新增模式
+        await plantingLogService.addLog({
+          cropId: selectedCrop.id,
+          cropName: selectedCrop.name,
+          logType: data.logType,
+          recordDate: data.recordDate,
+          content: data.content,
+          images: [],
+        });
+        Alert.alert('成功', '记录已添加');
+      }
+
+      const logs = await plantingLogService.getLogsByCrop(selectedCrop.id);
+      const filteredLogs = logs
+        .filter((log) => log.cropId === selectedCrop.id)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setCropLogs(filteredLogs);
+      setEditingLog(null);
+    } catch (error) {
+      console.error('[CropScreen] Failed to submit log:', error);
+      if (editingLog) {
+        Alert.alert('修改失败', '请稍后重试');
+      } else {
+        Alert.alert('添加失败', '请稍后重试');
+      }
+      throw error;
+    }
+  };
+
+  const handleSave = async () => {
+    const validation = validateCropForm(formData);
+    if (!validation.valid) {
+      setFormErrors(validation.errors);
+      return;
+    }
 
     try {
       if (modalMode === 'add') {
-        // 调用 API 新增作物
-        await cropService.addCrop({
-          name: formData.name.trim(),
-          stage: domainStage,
-          status: domainStatus,
-          plantDate: new Date().toISOString().split('T')[0],
-          harvestDate: formData.harvestDate.trim() || undefined,
-          icon: selectedIcon,
-        });
+        const payload = formDataToCreatePayload(formData, selectedIcon);
+        await cropService.addCrop(payload);
         setModalVisible(false);
+        setFormErrors({});
         Alert.alert('成功', '作物添加成功');
         fetchCrops();
       } else if (modalMode === 'edit' && selectedCrop) {
-        // 调用 API 更新作物
-        await cropService.updateCrop(selectedCrop.id, {
-          name: formData.name.trim(),
-          stage: domainStage,
-          status: domainStatus,
-          harvestDate: formData.harvestDate.trim() || undefined,
-        });
+        const payload = formDataToUpdatePayload(formData, selectedIcon);
+        const updatedCrop = await cropService.updateCrop(selectedCrop.id, payload);
+        if (!updatedCrop) {
+          Alert.alert('更新失败', '请稍后重试');
+          return;
+        }
         setModalVisible(false);
+        setFormErrors({});
         Alert.alert('成功', '作物更新成功');
         fetchCrops();
       }
@@ -250,21 +292,19 @@ export default function CropScreen() {
       } else {
         Alert.alert('更新失败', '请稍后重试');
       }
-      // 失败时不关闭弹窗
     }
   };
 
   const handleCancel = () => {
-    if (modalMode === 'edit' || modalMode === 'add') {
+    if (modalMode === 'edit') {
       setModalMode('view');
       if (selectedCrop) {
-        setFormData({
-          name: selectedCrop.name,
-          stage: selectedCrop.stage,
-          status: selectedCrop.status,
-          harvestDate: selectedCrop.harvestDate || '',
-        });
+        setFormData(cropToFormData(selectedCrop));
+        setFormErrors({});
       }
+    } else if (modalMode === 'add') {
+      setModalVisible(false);
+      setFormErrors({});
     } else {
       setModalVisible(false);
     }
@@ -286,48 +326,14 @@ export default function CropScreen() {
         </View>
       </LinearGradient>
 
-      <View style={styles.searchContainer}>
-        <View style={styles.searchInputWrapper}>
-          <Ionicons name="search" size={20} color="#999" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="搜索作物..."
-            value={searchText}
-            onChangeText={setSearchText}
-            placeholderTextColor="#999"
-          />
-        </View>
-      </View>
+      <CropStatusTabs stats={stats} value={quickStatusFilter} onChange={setQuickStatusFilter} />
 
-      {/* 修改后的流式自动换行筛选栏，无横向滚动 */}
-      <View style={styles.filterWrapContainer}>
-        {['全部', '正常', '注意', '成熟'].map((status) => (
-          <TouchableOpacity
-            key={status}
-            style={[
-              styles.filterButton,
-              status !== '全部' && { borderColor: getStatusColor(status) },
-              statusFilter === status && {
-                backgroundColor: status === '全部' ? '#4CAF50' : getStatusColor(status),
-                borderColor: status === '全部' ? '#4CAF50' : getStatusColor(status),
-              },
-            ]}
-            onPress={() => setStatusFilter(status as any)}
-          >
-            <Text
-              style={[
-                styles.filterButtonText,
-                statusFilter === status && {
-                  color: '#fff',
-                  fontWeight: 'bold',
-                },
-              ]}
-            >
-              {status}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <CropSearchBar
+        searchText={searchText}
+        onSearchTextChange={setSearchText}
+        filterCount={getFilterCount()}
+        onOpenFilter={() => setFilterModalVisible(true)}
+      />
 
       <ScrollView style={styles.cropList}>
         {filteredCrops.length === 0 ? (
@@ -338,34 +344,7 @@ export default function CropScreen() {
           </View>
         ) : (
           filteredCrops.map((crop) => (
-            <TouchableOpacity
-              key={crop.id}
-              style={styles.cropCard}
-              onPress={() => handleCropPress(crop)}
-              onLongPress={() => {
-                handleCropPress(crop);
-                setTimeout(() => handleEdit(), 100);
-              }}
-            >
-              <LinearGradient
-                colors={['#E8F5E9', '#C8E6C9']}
-                style={styles.cropIcon}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Text style={styles.cropIconText}>{crop.icon}</Text>
-              </LinearGradient>
-              <View style={styles.cropInfo}>
-                <Text style={styles.cropName}>{crop.name}</Text>
-                <Text style={styles.cropStage}>生长期：{crop.stage}</Text>
-                <Text style={styles.cropDate}>种植时间：{crop.plantDate}</Text>
-                <Text style={styles.cropDays}>已种植 {calculateDays(crop.plantDate)} 天</Text>
-              </View>
-              <View style={[styles.statusTag, { backgroundColor: getStatusStyle(crop.status).backgroundColor }]}>
-                <View style={[styles.statusDot, { backgroundColor: getStatusStyle(crop.status).dotColor }]} />
-                <Text style={[styles.statusText, { color: getStatusStyle(crop.status).textColor }]}>{crop.status}</Text>
-              </View>
-            </TouchableOpacity>
+            <CropCard key={crop.id} crop={crop} onPress={() => handleCropPress(crop)} />
           ))
         )}
       </ScrollView>
@@ -380,166 +359,59 @@ export default function CropScreen() {
         </TouchableOpacity>
       </View>
 
-      <Modal
-        visible={modalVisible}
-        transparent
-        animationType="slide"
-        onRequestClose={handleCancel}
-      >
-        <TouchableWithoutFeedback onPress={handleCancel}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback onPress={() => {}}>
-              <View style={styles.modalContent}>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>
-                    {modalMode === 'add' ? '添加作物' : modalMode === 'edit' ? '编辑作物' : '作物详情'}
-                  </Text>
-                  <TouchableOpacity onPress={handleCancel}>
-                    <Text style={styles.modalClose}>✕</Text>
-                  </TouchableOpacity>
-                </View>
+      <CropFilterModal
+        visible={filterModalVisible}
+        plotOptions={plotOptions}
+        selectedPlot={selectedPlot}
+        selectedAdvancedStatus={selectedAdvancedStatus}
+        onSelectPlot={setSelectedPlot}
+        onSelectAdvancedStatus={setSelectedAdvancedStatus}
+        onClear={handleClearFilters}
+        onClose={() => setFilterModalVisible(false)}
+      />
 
-                <ScrollView style={styles.modalBody}>
-                  {modalMode === 'view' && selectedCrop ? (
-  <>
-    <View style={styles.detailIconContainer}>
-      <Text style={styles.detailIcon}>{selectedCrop.icon}</Text>
-    </View>
-    <Text style={styles.detailName}>{selectedCrop.name}</Text>
-    <Text style={styles.detailStage}>生长期：{selectedCrop.stage}</Text>
-    <Text style={styles.detailDate}>种植时间：{selectedCrop.plantDate}</Text>
-    <Text style={styles.detailDays}>已种植 {calculateDays(selectedCrop.plantDate)} 天</Text>
-    {selectedCrop.harvestDate && (
-      <Text style={styles.detailDate}>预计收获：{selectedCrop.harvestDate}</Text>
-    )}
-    <View style={[styles.detailStatus, getStatusStyle(selectedCrop.status)]}>
-      <Text style={[styles.detailStatusText, { color: getStatusStyle(selectedCrop.status).textColor }]}>
-        {selectedCrop.status}
-      </Text>
-    </View>
-  </>
-) : (
-                    <>
-                      {modalMode === 'add' && (
-                        <View style={styles.iconSelector}>
-                          <Text style={styles.iconSelectorTitle}>选择图标</Text>
-                          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                            {cropIcons.map((icon) => (
-                              <TouchableOpacity
-                                key={icon}
-                                style={[
-                                  styles.iconOption,
-                                  selectedIcon === icon && styles.iconOptionSelected,
-                                ]}
-                                onPress={() => setSelectedIcon(icon)}
-                              >
-                                <Text style={styles.iconOptionText}>{icon}</Text>
-                              </TouchableOpacity>
-                            ))}
-                          </ScrollView>
-                        </View>
-                      )}
+      <CropDetailModal
+        visible={modalVisible && modalMode === 'view'}
+        crop={selectedCrop}
+        logs={cropLogs}
+        onClose={() => setModalVisible(false)}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onViewAllLogs={handleViewAllLogs}
+        onAddLog={handleAddLog}
+      />
 
-                      <View style={styles.formField}>
-                        <Text style={styles.formLabel}>作物名称</Text>
-                        <TextInput
-                          style={styles.formInput}
-                          value={formData.name}
-                          onChangeText={(text) => setFormData({ ...formData, name: text })}
-                          placeholder="例如：水稻"
-                          placeholderTextColor="#999"
-                        />
-                      </View>
+      <PlantingLogListModal
+        visible={logListModalVisible}
+        cropName={selectedCrop?.name || ''}
+        logs={cropLogs}
+        onClose={() => setLogListModalVisible(false)}
+        onAddLog={handleAddLog}
+        onEditLog={handleEditLog}
+        onDeleteLog={handleDeleteLog}
+      />
 
-                      <View style={styles.formField}>
-                        <Text style={styles.formLabel}>生长期</Text>
-                        <TextInput
-                          style={styles.formInput}
-                          value={formData.stage}
-                          onChangeText={(text) => setFormData({ ...formData, stage: text })}
-                          placeholder="例如：分蘖期"
-                          placeholderTextColor="#999"
-                        />
-                      </View>
+      <CropFormModal
+        visible={modalVisible && (modalMode === 'add' || modalMode === 'edit')}
+        mode={modalMode === 'add' ? 'add' : 'edit'}
+        value={formData}
+        selectedIcon={selectedIcon}
+        onChange={setFormData}
+        onIconChange={setSelectedIcon}
+        onCancel={handleCancel}
+        onSubmit={handleSave}
+        errors={formErrors}
+      />
 
-                      <View style={styles.formField}>
-                        <Text style={styles.formLabel}>状态</Text>
-                        <View style={styles.statusSelector}>
-                          {(['正常', '注意', '成熟'] as const).map((status) => (
-                            <TouchableOpacity
-                              key={status}
-                              style={[
-                                styles.statusOption,
-                                formData.status === status && styles.statusOptionSelected,
-                                formData.status === status && getStatusStyle(status),
-                              ]}
-                              onPress={() => setFormData({ ...formData, status })}
-                            >
-                              <Text
-                                style={[
-                                  styles.statusOptionText,
-                                  formData.status === status && styles.statusOptionTextSelected,
-                                ]}
-                              >
-                                {status}
-                              </Text>
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                      </View>
-
-                      <View style={styles.formField}>
-                        <Text style={styles.formLabel}>预计收获日期（可选）</Text>
-                        <TextInput
-                          style={styles.formInput}
-                          value={formData.harvestDate}
-                          onChangeText={(text) => setFormData({ ...formData, harvestDate: text })}
-                          placeholder="YYYY-MM-DD"
-                          placeholderTextColor="#999"
-                        />
-                      </View>
-                    </>
-                  )}
-                </ScrollView>
-
-                <View style={styles.modalFooter}>
-                  {modalMode === 'view' ? (
-                    <>
-                      <TouchableOpacity
-                        style={[styles.modalButton, styles.modalButtonSecondary]}
-                        onPress={handleDelete}
-                      >
-                        <Text style={styles.modalButtonSecondaryText}>删除</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.modalButton, styles.modalButtonPrimary]}
-                        onPress={handleEdit}
-                      >
-                        <Text style={styles.modalButtonPrimaryText}>编辑</Text>
-                      </TouchableOpacity>
-                    </>
-                  ) : (
-                    <>
-                      <TouchableOpacity
-                        style={[styles.modalButton, styles.modalButtonSecondary]}
-                        onPress={handleCancel}
-                      >
-                        <Text style={styles.modalButtonSecondaryText}>取消</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.modalButton, styles.modalButtonPrimary]}
-                        onPress={handleSave}
-                      >
-                        <Text style={styles.modalButtonPrimaryText}>保存</Text>
-                      </TouchableOpacity>
-                    </>
-                  )}
-                </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+      <PlantingLogFormModal
+        visible={plantingLogFormVisible}
+        onClose={() => {
+          setPlantingLogFormVisible(false);
+          setEditingLog(null);
+        }}
+        onSubmit={handleSubmitLog}
+        editingLog={editingLog}
+      />
     </View>
   );
 }
@@ -584,124 +456,9 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '500',
   },
-  searchContainer: {
-    padding: 16,
-    paddingTop: 12,
-  },
-  searchInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F7FA',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  searchIcon: {
-    marginRight: 10,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: '#333',
-  },
-  // 替换原横向滚动filterContainer，新增自动换行容器
-  filterWrapContainer: {
-    paddingHorizontal: 16,
-    marginBottom: 12,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  filterButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    minWidth: 62,
-    alignItems: 'center',
-  },
-  filterButtonText: {
-    fontSize: 13,
-    color: '#666',
-    fontWeight: '500',
-  },
   cropList: {
     flex: 1,
     paddingHorizontal: 16,
-  },
-  cropCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    elevation: 3,
-    borderBottomWidth: 2,
-    borderBottomColor: '#E8F5E9',
-  },
-  cropIcon: {
-    width: 70,
-    height: 70,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  cropIconText: {
-    fontSize: 36,
-  },
-  cropInfo: {
-    flex: 1,
-  },
-  cropName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1B5E20',
-    marginBottom: 4,
-  },
-  cropStage: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 2,
-  },
-  cropDate: {
-    fontSize: 13,
-    color: '#999',
-    marginBottom: 2,
-  },
-  cropDays: {
-    fontSize: 12,
-    color: '#4CAF50',
-    fontWeight: '500',
-  },
-  statusTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: 'bold',
   },
   emptyState: {
     alignItems: 'center',
@@ -744,178 +501,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '90%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  modalClose: {
-    fontSize: 24,
-    color: '#999',
-    padding: 4,
-  },
-  modalBody: {
-    padding: 20,
-  },
-  detailIconContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  detailIcon: {
-    fontSize: 80,
-  },
-  detailName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  detailStage: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 6,
-  },
-  detailDate: {
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  detailDays: {
-    fontSize: 14,
-    color: '#4CAF50',
-    textAlign: 'center',
-    marginBottom: 4,
-    fontWeight: '500',
-  },
-  detailStatus: {
-    alignSelf: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginTop: 12,
-  },
-  detailStatusText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  iconSelector: {
-    marginBottom: 20,
-  },
-  iconSelectorTitle: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 12,
-    fontWeight: '500',
-  },
-  iconOption: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    backgroundColor: '#f5f5f5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  iconOptionSelected: {
-    borderColor: '#4CAF50',
-    backgroundColor: '#E8F5E9',
-  },
-  iconOptionText: {
-    fontSize: 28,
-  },
-  formField: {
-    marginBottom: 20,
-  },
-  formLabel: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-  formInput: {
-    backgroundColor: '#f5f5f5',
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 15,
-    color: '#333',
-  },
-  statusSelector: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  statusOption: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: '#f5f5f5',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  statusOptionSelected: {
-    borderColor: '#4CAF50',
-  },
-  statusOptionText: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
-  statusOptionTextSelected: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    padding: 20,
-    gap: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  modalButton: {
-    flex: 1,
-    padding: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  modalButtonPrimary: {
-    backgroundColor: '#4CAF50',
-  },
-  modalButtonPrimaryText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  modalButtonSecondary: {
-    backgroundColor: '#f5f5f5',
-  },
-  modalButtonSecondaryText: {
-    color: '#666',
-    fontSize: 16,
-    fontWeight: '500',
   },
 });

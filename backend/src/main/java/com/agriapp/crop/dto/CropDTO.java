@@ -17,14 +17,17 @@ public class CropDTO {
     private String stage;
     private String status;
     private String icon;
+    private String farmId;
+    private String plotId;
+    private String expectedHarvestDate;
+    private String remark;
 
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private String createdAt;
 
-    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private String updatedAt;
 
-    // Getter and Setter
     public String getId() {
         return id;
     }
@@ -103,6 +106,38 @@ public class CropDTO {
 
     public void setIcon(String icon) {
         this.icon = icon;
+    }
+
+    public String getFarmId() {
+        return farmId;
+    }
+
+    public void setFarmId(String farmId) {
+        this.farmId = farmId;
+    }
+
+    public String getPlotId() {
+        return plotId;
+    }
+
+    public void setPlotId(String plotId) {
+        this.plotId = plotId;
+    }
+
+    public String getExpectedHarvestDate() {
+        return expectedHarvestDate;
+    }
+
+    public void setExpectedHarvestDate(String expectedHarvestDate) {
+        this.expectedHarvestDate = expectedHarvestDate;
+    }
+
+    public String getRemark() {
+        return remark;
+    }
+
+    public void setRemark(String remark) {
+        this.remark = remark;
     }
 
     public String getCreatedAt() {
