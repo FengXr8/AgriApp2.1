@@ -20,7 +20,7 @@ export default function CropSearchBar({ searchText, onSearchTextChange, filterCo
           onChangeText={onSearchTextChange}
           placeholderTextColor="#999"
         />
-        {searchText && (
+        {searchText.length > 0 && (
           <TouchableOpacity onPress={() => onSearchTextChange('')}>
             <Ionicons name="close" size={18} color="#999" />
           </TouchableOpacity>

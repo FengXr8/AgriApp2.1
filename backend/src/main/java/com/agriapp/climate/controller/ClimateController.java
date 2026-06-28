@@ -2,16 +2,21 @@ package com.agriapp.climate.controller;
 
 import com.agriapp.climate.dto.ClimateInfoDTO;
 import com.agriapp.climate.dto.FarmingSuggestionDTO;
+import com.agriapp.climate.dto.SolarTermInfoDTO;
 import com.agriapp.common.ApiResponse;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 
 /**
- * 气候信息 Mock API 控制器
+ * 气候信息 Mock API 控制器（mock profile）
  */
 @RestController
 @RequestMapping("/api/climate")
+@Profile("mock")
 public class ClimateController {
 
     /**
@@ -48,27 +53,48 @@ public class ClimateController {
 
         // 天气预报
         ClimateInfoDTO.ForecastDTO today = new ClimateInfoDTO.ForecastDTO();
-        today.setDate("今天");
+        DateTimeFormatter forecastFormatter = DateTimeFormatter.ofPattern("MM-dd");
+        today.setDate(LocalDate.now().format(forecastFormatter));
         today.setWeatherType("cloudy");
         today.setTempMin(22);
         today.setTempMax(28);
         today.setWindDirection("东南风");
 
         ClimateInfoDTO.ForecastDTO tomorrow = new ClimateInfoDTO.ForecastDTO();
-        tomorrow.setDate("明天");
+        tomorrow.setDate(LocalDate.now().plusDays(1).format(forecastFormatter));
         tomorrow.setWeatherType("sunny");
         tomorrow.setTempMin(23);
         tomorrow.setTempMax(30);
         tomorrow.setWindDirection("南风");
 
         ClimateInfoDTO.ForecastDTO afterTomorrow = new ClimateInfoDTO.ForecastDTO();
-        afterTomorrow.setDate("后天");
+        afterTomorrow.setDate(LocalDate.now().plusDays(2).format(forecastFormatter));
         afterTomorrow.setWeatherType("rainy");
         afterTomorrow.setTempMin(21);
         afterTomorrow.setTempMax(26);
         afterTomorrow.setWindDirection("东风");
 
         climate.setForecast(Arrays.asList(today, tomorrow, afterTomorrow));
+
+        // 节气详细信息
+        SolarTermInfoDTO solarTermInfo = new SolarTermInfoDTO();
+        
+        // 当前节气
+        SolarTermInfoDTO.CurrentTermDTO currentTerm = new SolarTermInfoDTO.CurrentTermDTO();
+        currentTerm.setName("芒种");
+        currentTerm.setStartDate("2026-06-05");
+        currentTerm.setEndDate("2026-06-20");
+        currentTerm.setIcon("🌾");
+        currentTerm.setFarmingTip("芒种时节，适宜播种晚稻、移栽秧苗");
+        solarTermInfo.setCurrentTerm(currentTerm);
+        
+        // 下一节气
+        SolarTermInfoDTO.NextTermDTO nextTerm = new SolarTermInfoDTO.NextTermDTO();
+        nextTerm.setName("夏至");
+        nextTerm.setDaysUntil(5);
+        solarTermInfo.setNextTerm(nextTerm);
+        
+        climate.setSolarTermInfo(solarTermInfo);
 
         return ApiResponse.success(climate);
     }

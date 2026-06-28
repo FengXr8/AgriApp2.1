@@ -2,9 +2,10 @@ import { useState, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
-import { cropService } from '../../../domain/services';
+import { cropService, farmSelectionService, farmService } from '../../../domain/services';
 import type { CropListItem, CropModalMode, FormData, QuickStatusFilter, CropStats, AdvancedStatusFilter } from '../types/crop-ui.types';
 import type { PlantingLog, LogType } from '../../../domain/types/planting-log.types';
+import type { Farm, FieldPlot } from '../../../domain/types';
 import { plantingLogService } from '../../../domain/services/planting-log.service';
 import {
   domainCropToListItem,
@@ -26,6 +27,9 @@ import CropDetailModal from '../components/CropDetailModal';
 import CropFormModal from '../components/CropFormModal';
 import PlantingLogListModal from '../components/PlantingLogListModal';
 import PlantingLogFormModal from '../components/PlantingLogFormModal';
+import FarmPickerModal from '../../shared/components/FarmPickerModal';
+import FarmCreateModal from '../../shared/components/FarmCreateModal';
+import PlotCreateModal from '../../shared/components/PlotCreateModal';
 
 export default function CropScreen() {
   const [crops, setCrops] = useState<CropListItem[]>([]);
@@ -45,6 +49,16 @@ export default function CropScreen() {
   const [logListModalVisible, setLogListModalVisible] = useState(false);
   const [plantingLogFormVisible, setPlantingLogFormVisible] = useState(false);
   const [editingLog, setEditingLog] = useState<PlantingLog | null>(null);
+  const initialSelection = farmSelectionService.getSelection();
+  const [farms, setFarms] = useState<Farm[]>([]);
+  const [plotsByFarmId, setPlotsByFarmId] = useState<Record<string, FieldPlot[]>>({});
+  const [selectedFarmId, setSelectedFarmId] = useState<string | undefined>(initialSelection?.farmId);
+  const [selectedCurrentPlotId, setSelectedCurrentPlotId] = useState<string | undefined>(initialSelection?.plotId);
+  const [farmPickerVisible, setFarmPickerVisible] = useState(false);
+  const [plotFarmPickerVisible, setPlotFarmPickerVisible] = useState(false);
+  const [farmCreateVisible, setFarmCreateVisible] = useState(false);
+  const [plotCreateVisible, setPlotCreateVisible] = useState(false);
+  const [createMenuVisible, setCreateMenuVisible] = useState(false);
 
   const fetchCrops = async () => {
     setLoading(true);
@@ -63,10 +77,56 @@ export default function CropScreen() {
     }
   };
 
+  const fetchFarms = async () => {
+    const farmList = await farmService.getFarms();
+    const plotEntries = await Promise.all(
+      farmList.map(async farm => [farm.id, await farmService.getPlots(farm.id)] as const)
+    );
+    const nextPlotsByFarmId = Object.fromEntries(plotEntries);
+    const savedSelection = farmSelectionService.getSelection();
+
+    setFarms(farmList);
+    setPlotsByFarmId(nextPlotsByFarmId);
+
+    if (savedSelection && farmList.some(farm => farm.id === savedSelection.farmId)) {
+      const savedPlots = nextPlotsByFarmId[savedSelection.farmId] || [];
+      const plotStillExists = savedPlots.some(plot => plot.id === savedSelection.plotId);
+      setSelectedFarmId(savedSelection.farmId);
+      setSelectedCurrentPlotId(plotStillExists ? savedSelection.plotId : undefined);
+      return;
+    }
+
+    if (farmList.length > 0) {
+      setSelectedFarmId(farmList[0].id);
+      setSelectedCurrentPlotId(undefined);
+      farmSelectionService.setSelection({ farmId: farmList[0].id });
+    } else {
+      setSelectedFarmId(undefined);
+      setSelectedCurrentPlotId(undefined);
+      farmSelectionService.clearSelection();
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       fetchCrops();
+      fetchFarms();
     }, [])
+  );
+
+  const selectedFarm = useMemo(
+    () => farms.find(farm => farm.id === selectedFarmId),
+    [farms, selectedFarmId]
+  );
+
+  const currentFarmPlots = useMemo(
+    () => (selectedFarmId ? plotsByFarmId[selectedFarmId] || [] : []),
+    [plotsByFarmId, selectedFarmId]
+  );
+
+  const selectedCurrentPlot = useMemo(
+    () => currentFarmPlots.find(plot => plot.id === selectedCurrentPlotId),
+    [currentFarmPlots, selectedCurrentPlotId]
   );
 
   const stats: CropStats = useMemo(() => getCropStats(crops), [crops]);
@@ -101,9 +161,12 @@ export default function CropScreen() {
         }
       }
 
-      return matchesSearch && matchesQuick && matchesPlot && matchesAdvanced;
+      const matchesCurrentFarm = !selectedFarmId || crop.farmId === selectedFarmId;
+      const matchesCurrentPlot = !selectedCurrentPlotId || crop.plotId === selectedCurrentPlotId;
+
+      return matchesSearch && matchesQuick && matchesPlot && matchesAdvanced && matchesCurrentFarm && matchesCurrentPlot;
     });
-  }, [crops, searchText, quickStatusFilter, selectedPlot, selectedAdvancedStatus]);
+  }, [crops, searchText, quickStatusFilter, selectedPlot, selectedAdvancedStatus, selectedFarmId, selectedCurrentPlotId]);
 
   const getFilterCount = (): number => {
     let count = 0;
@@ -140,8 +203,20 @@ export default function CropScreen() {
   };
 
   const handleAddCrop = () => {
+    if (!selectedFarmId) {
+      setFarmPickerVisible(true);
+      return;
+    }
+    if (currentFarmPlots.length === 0) {
+      setPlotCreateVisible(true);
+      return;
+    }
     setSelectedCrop(null);
-    setFormData(createEmptyCropFormData());
+    setFormData({
+      ...createEmptyCropFormData(),
+      farmId: selectedFarmId,
+      plotId: selectedCurrentPlotId || currentFarmPlots[0].id,
+    });
     setSelectedIcon('🌾');
     setFormErrors({});
     setModalMode('add');
@@ -150,6 +225,50 @@ export default function CropScreen() {
 
   const handleEdit = () => {
     setModalMode('edit');
+  };
+
+  const handleSelectFarm = (farmId: string, plotId?: string) => {
+    setSelectedFarmId(farmId);
+    setSelectedCurrentPlotId(plotId);
+    farmSelectionService.setSelection({ farmId, plotId });
+    setFarmPickerVisible(false);
+  };
+
+  const handleOpenCreateMenu = () => {
+    Alert.alert('创建', '请选择要创建的内容', [
+      { text: '创建农场', onPress: () => setFarmCreateVisible(true) },
+      {
+        text: '创建地块',
+        onPress: () => {
+          setPlotFarmPickerVisible(true);
+        },
+      },
+      { text: '取消', style: 'cancel' },
+    ]);
+  };
+
+  const handleCreateFarm = async (data: Partial<Farm> & { name: string }) => {
+    const farm = await farmService.createFarm(data);
+    setFarmCreateVisible(false);
+    setSelectedFarmId(farm.id);
+    setSelectedCurrentPlotId(undefined);
+    setFarms(prev => [farm, ...prev.filter(item => item.id !== farm.id)]);
+    setPlotsByFarmId(prev => ({ ...prev, [farm.id]: prev[farm.id] || [] }));
+    farmSelectionService.setSelection({ farmId: farm.id });
+    await fetchFarms();
+  };
+
+  const handleCreatePlot = async (data: Partial<FieldPlot> & { name: string }) => {
+    if (!selectedFarmId) {
+      setPlotCreateVisible(false);
+      setPlotFarmPickerVisible(true);
+      return;
+    }
+    const plot = await farmService.createPlot(selectedFarmId, data);
+    setPlotCreateVisible(false);
+    await fetchFarms();
+    setSelectedCurrentPlotId(plot.id);
+    farmSelectionService.setSelection({ farmId: selectedFarmId, plotId: plot.id });
   };
 
   const handleDelete = () => {
@@ -318,7 +437,39 @@ export default function CropScreen() {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
-        <Text style={styles.headerTitle}>我的作物</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.headerTitle}>我的作物</Text>
+          <View style={styles.createMenuContainer}>
+            <TouchableOpacity 
+              style={styles.headerCreateBtn} 
+              onPress={() => setCreateMenuVisible(!createMenuVisible)}
+            >
+              <Text style={styles.headerCreateIcon}>+</Text>
+            </TouchableOpacity>
+            {createMenuVisible && (
+              <View style={styles.createMenuDropdown}>
+                <TouchableOpacity 
+                  style={styles.createMenuItem}
+                  onPress={() => {
+                    setCreateMenuVisible(false);
+                    setFarmCreateVisible(true);
+                  }}
+                >
+                  <Text style={styles.createMenuItemText}>创建农场</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.createMenuItem}
+                  onPress={() => {
+                    setCreateMenuVisible(false);
+                    setPlotFarmPickerVisible(true);
+                  }}
+                >
+                  <Text style={styles.createMenuItemText}>创建地块</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
         <Text style={styles.headerSubtitle}>共 {crops.length} 种作物</Text>
         <View style={styles.tipContainer}>
           <Text style={styles.tipIcon}>🌱</Text>
@@ -327,6 +478,16 @@ export default function CropScreen() {
       </LinearGradient>
 
       <CropStatusTabs stats={stats} value={quickStatusFilter} onChange={setQuickStatusFilter} />
+
+      <TouchableOpacity style={styles.farmSelector} onPress={() => setFarmPickerVisible(true)}>
+        <View>
+          <Text style={styles.farmSelectorLabel}>当前农场</Text>
+          <Text style={styles.farmSelectorValue}>
+            {selectedFarm ? `${selectedFarm.name}${selectedCurrentPlot ? ` · ${selectedCurrentPlot.name}` : ''}` : '请选择农场'}
+          </Text>
+        </View>
+        <Text style={styles.farmSelectorAction}>切换</Text>
+      </TouchableOpacity>
 
       <CropSearchBar
         searchText={searchText}
@@ -401,6 +562,9 @@ export default function CropScreen() {
         onCancel={handleCancel}
         onSubmit={handleSave}
         errors={formErrors}
+        farmName={selectedFarm?.name || '未选择农场'}
+        plotOptions={currentFarmPlots.map(plot => ({ id: plot.id, name: plot.name }))}
+        onCreatePlot={() => setPlotCreateVisible(true)}
       />
 
       <PlantingLogFormModal
@@ -411,6 +575,55 @@ export default function CropScreen() {
         }}
         onSubmit={handleSubmitLog}
         editingLog={editingLog}
+      />
+
+      <FarmPickerModal
+        visible={farmPickerVisible}
+        farms={farms}
+        plotsByFarmId={plotsByFarmId}
+        selectedFarmId={selectedFarmId}
+        selectedPlotId={selectedCurrentPlotId}
+        title="选择当前农场"
+        showPlots={false}
+        onSelect={handleSelectFarm}
+        onClose={() => setFarmPickerVisible(false)}
+        onCreateFarm={() => {
+          setFarmPickerVisible(false);
+          setFarmCreateVisible(true);
+        }}
+      />
+
+      <FarmPickerModal
+        visible={plotFarmPickerVisible}
+        farms={farms}
+        plotsByFarmId={{}}
+        selectedFarmId={selectedFarmId}
+        title="选择地块所属农场"
+        onSelect={(farmId) => {
+          setSelectedFarmId(farmId);
+          setSelectedCurrentPlotId(undefined);
+          farmSelectionService.setSelection({ farmId });
+          setPlotFarmPickerVisible(false);
+          setPlotCreateVisible(true);
+        }}
+        onClose={() => setPlotFarmPickerVisible(false)}
+        onCreateFarm={() => {
+          setPlotFarmPickerVisible(false);
+          setFarmCreateVisible(true);
+        }}
+      />
+
+      <FarmCreateModal
+        visible={farmCreateVisible}
+        onCancel={() => setFarmCreateVisible(false)}
+        onSubmit={handleCreateFarm}
+      />
+
+      <PlotCreateModal
+        visible={plotCreateVisible}
+        farmName={selectedFarm?.name}
+        onCancel={() => setPlotCreateVisible(false)}
+        onSubmit={handleCreatePlot}
       />
     </View>
   );
@@ -427,11 +640,56 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 4,
+  },
+  headerCreateBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerCreateIcon: {
+    fontSize: 24,
+    color: '#fff',
+    fontWeight: 'bold',
+    lineHeight: 26,
+  },
+  createMenuContainer: {
+    position: 'relative',
+  },
+  createMenuDropdown: {
+    position: 'absolute',
+    top: 40,
+    right: 0,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    paddingVertical: 4,
+    minWidth: 120,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 100,
+  },
+  createMenuItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  createMenuItemText: {
+    fontSize: 14,
+    color: '#333',
   },
   headerSubtitle: {
     fontSize: 14,
@@ -460,6 +718,35 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
   },
+  farmSelector: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 4,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  farmSelectorLabel: {
+    fontSize: 12,
+    color: '#777',
+    marginBottom: 3,
+  },
+  farmSelectorValue: {
+    fontSize: 15,
+    color: '#222',
+    fontWeight: '700',
+  },
+  farmSelectorAction: {
+    fontSize: 13,
+    color: '#4CAF50',
+    fontWeight: '700',
+  },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -480,6 +767,8 @@ const styles = StyleSheet.create({
     color: '#999',
   },
   footer: {
+    flexDirection: 'row',
+    columnGap: 12,
     padding: 20,
     paddingBottom: 40,
     backgroundColor: '#fff',
@@ -487,6 +776,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#eee',
   },
   addButton: {
+    flex: 1,
     backgroundColor: '#4CAF50',
     padding: 16,
     borderRadius: 16,
@@ -499,6 +789,20 @@ const styles = StyleSheet.create({
   },
   addButtonText: {
     color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  secondaryButton: {
+    width: 96,
+    backgroundColor: '#E8F5E9',
+    borderWidth: 1,
+    borderColor: '#4CAF50',
+    padding: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    color: '#2E7D32',
     fontSize: 16,
     fontWeight: 'bold',
   },

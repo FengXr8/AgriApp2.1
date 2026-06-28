@@ -3,7 +3,7 @@ spring:
     activate:
       on-profile: local
   datasource:
-    url: ${AGRI_DB_URL:jdbc:mysql://localhost:3307/agri_app?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    url: ${AGRI_DB_URL:jdbc:mysql://127.0.0.1:3306/agri_app?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
     username: ${AGRI_DB_USERNAME:agriapp}
     password: ${AGRI_DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -11,3 +11,7 @@ spring:
     locations:
       - classpath:db/migration
       - classpath:db/seed/local
+
+qweather:
+  api-key: 669fc3a96ff74c9999059fe7df4125cb
+  api-host: n23aapbhhp.re.qweatherapi.com

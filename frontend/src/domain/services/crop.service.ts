@@ -5,51 +5,42 @@ const mockCrops: Crop[] = [
   {
     id: 'crop_001',
     userId: 'user_001',
-    farmId: 'farm_001',
-    plotId: 'plot_001',
     name: '水稻',
-    variety: '杂交水稻',
+    variety: '籼稻',
     plantingArea: 2.5,
     plantDate: '2026-03-15',
-    expectedHarvestDate: '2026-09-15',
-    stage: 'fruiting',
-    status: 'normal',
+    harvestDate: '2026-07-20',
+    stage: 'vegetative',
+    status: 'planting',
     icon: '🌾',
-    remark: '第一批水稻',
     createdAt: '2026-03-15T08:00:00Z',
     updatedAt: '2026-06-16T10:00:00Z',
   },
   {
     id: 'crop_002',
     userId: 'user_001',
-    farmId: 'farm_001',
-    plotId: 'plot_001',
-    name: '西红柿',
+    name: '番茄',
     variety: '樱桃番茄',
     plantingArea: 0.5,
-    plantDate: '2026-05-01',
-    expectedHarvestDate: '2026-08-15',
-    stage: 'vegetative',
-    status: 'need_water',
+    plantDate: '2026-04-01',
+    harvestDate: '2026-06-30',
+    stage: 'fruiting',
+    status: 'planting',
     icon: '🍅',
-    remark: '大棚西红柿',
     createdAt: '2026-04-01T08:00:00Z',
     updatedAt: '2026-06-16T10:00:00Z',
   },
   {
     id: 'crop_003',
     userId: 'user_001',
-    farmId: 'farm_001',
-    plotId: 'plot_002',
-    name: '小麦',
-    variety: '冬小麦',
+    name: '玉米',
+    variety: '甜玉米',
     plantingArea: 1.2,
-    plantDate: '2025-10-15',
-    harvestDate: '2026-06-10',
+    plantDate: '2026-03-20',
+    harvestDate: '2026-07-15',
     stage: 'mature',
-    status: 'harvested',
-    icon: '🌾',
-    remark: '已完成收割',
+    status: 'planting',
+    icon: '🌽',
     createdAt: '2026-03-20T08:00:00Z',
     updatedAt: '2026-06-16T10:00:00Z',
   },
@@ -64,10 +55,6 @@ export interface CropCreateData {
   stage: GrowthStage;
   status?: CropStatus;
   icon?: string;
-  farmId?: string;
-  plotId?: string;
-  expectedHarvestDate?: string;
-  remark?: string;
 }
 
 export interface CropUpdateData {
@@ -78,30 +65,19 @@ export interface CropUpdateData {
   harvestDate?: string;
   stage?: GrowthStage;
   status?: CropStatus;
-  farmId?: string;
-  plotId?: string;
-  expectedHarvestDate?: string;
-  remark?: string;
-  icon?: string;
 }
 
 export const cropService = {
   getCrops: async (userId?: string): Promise<Crop[]> => {
     const timestamp = Date.now();
-    const userQuery = userId ? `&userId=${encodeURIComponent(userId)}` : '';
-
     try {
-      const response = await fetch(`${API_BASE_URL}/api/crops?_t=${timestamp}${userQuery}`, {
+      const response = await fetch(`${API_BASE_URL}/api/crops?_t=${timestamp}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-cache',
       });
       const result = await response.json();
       if (result.code === 200 && Array.isArray(result.data)) {
-        if (result.data.length === 0) {
-          console.warn('[cropService] empty response, using fallback');
-          return mockCrops;
-        }
         return result.data as Crop[];
       }
       console.warn('[cropService] unexpected response, using fallback');
@@ -142,10 +118,38 @@ export const cropService = {
         return result.data as Crop;
       }
       console.warn('[cropService] unexpected response, using mock');
-      return createLocalCrop(data);
+      const newCrop: Crop = {
+        id: `crop_${Date.now()}`,
+        userId: 'user_001',
+        name: data.name,
+        variety: data.variety ?? '',
+        plantingArea: data.plantingArea ?? 0,
+        plantDate: data.plantDate,
+        harvestDate: data.harvestDate,
+        stage: data.stage,
+        status: data.status ?? 'planting',
+        icon: data.icon ?? '🌱',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      return newCrop;
     } catch (error) {
       console.warn('[cropService] request failed, using mock:', error);
-      return createLocalCrop(data);
+      const newCrop: Crop = {
+        id: `crop_${Date.now()}`,
+        userId: 'user_001',
+        name: data.name,
+        variety: data.variety ?? '',
+        plantingArea: data.plantingArea ?? 0,
+        plantDate: data.plantDate,
+        harvestDate: data.harvestDate,
+        stage: data.stage,
+        status: data.status ?? 'planting',
+        icon: data.icon ?? '🌱',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      return newCrop;
     }
   },
 
@@ -186,22 +190,3 @@ export const cropService = {
     }
   },
 };
-
-const createLocalCrop = (data: CropCreateData): Crop => ({
-  id: `crop_${Date.now()}`,
-  userId: 'user_001',
-  name: data.name,
-  variety: data.variety ?? '',
-  farmId: data.farmId ?? '',
-  plotId: data.plotId ?? '',
-  plantingArea: data.plantingArea ?? 0,
-  plantDate: data.plantDate,
-  harvestDate: data.harvestDate,
-  expectedHarvestDate: data.expectedHarvestDate,
-  stage: data.stage,
-  status: data.status ?? 'planting',
-  remark: data.remark ?? '',
-  icon: data.icon ?? '🌱',
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-});

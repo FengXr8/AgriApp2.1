@@ -10,6 +10,9 @@ interface Props {
 }
 
 export default function CropCard({ crop, onPress }: Props) {
+  const hasExpectedHarvestDate = Boolean(crop.expectedHarvestDate?.trim());
+  const hasRemark = Boolean(crop.remark?.trim());
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress}>
       <LinearGradient
@@ -32,28 +35,28 @@ export default function CropCard({ crop, onPress }: Props) {
         </View>
         
         <Text style={styles.subInfo}>
-          {crop.variety || '未填写品种'} · {getPlotDisplayName(crop.plotId)} · {formatCropArea(crop.plantingArea)}
+          {(crop.variety || '未填写品种')} · {(getPlotDisplayName(crop.plotId) || '未知地块')} · {(formatCropArea(crop.plantingArea) || '0 亩')}
         </Text>
         
         <View style={styles.metaRow}>
           <View style={styles.metaItem}>
             <Ionicons name="calendar" size={12} color="#999" />
-            <Text style={styles.metaText}>{crop.plantDate}</Text>
+            <Text style={styles.metaText}>{crop.plantDate || '未知日期'}</Text>
           </View>
-          {crop.expectedHarvestDate && (
+          {hasExpectedHarvestDate ? (
             <View style={styles.metaItem}>
               <Ionicons name="calendar" size={12} color="#999" />
               <Text style={styles.metaText}>{crop.expectedHarvestDate}</Text>
             </View>
-          )}
+          ) : null}
         </View>
         
-        {crop.remark && (
+        {hasRemark ? (
           <View style={styles.remarkRow}>
             <Ionicons name="information-circle" size={12} color="#666" />
             <Text style={styles.remarkText}>{crop.remark}</Text>
           </View>
-        )}
+        ) : null}
       </View>
       
       <Ionicons name="chevron-forward" size={20} color="#ccc" />

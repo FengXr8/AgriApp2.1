@@ -28,7 +28,6 @@ public class CropDTO {
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private String updatedAt;
 
-    // Getter and Setter
     public String getId() {
         return id;
     }
@@ -83,7 +82,6 @@ public class CropDTO {
 
     public void setHarvestDate(String harvestDate) {
         this.harvestDate = harvestDate;
-        this.expectedHarvestDate = harvestDate;
     }
 
     public String getStage() {
@@ -132,7 +130,6 @@ public class CropDTO {
 
     public void setExpectedHarvestDate(String expectedHarvestDate) {
         this.expectedHarvestDate = expectedHarvestDate;
-        this.harvestDate = expectedHarvestDate;
     }
 
     public String getRemark() {

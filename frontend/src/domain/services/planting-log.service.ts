@@ -53,7 +53,6 @@ export interface PlantingLogUpdateData {
   images?: string[];
 }
 
-// 后端 logType 到前端 LogType 的转换
 const convertLogType = (backendType: string): LogType => {
   const typeMap: Record<string, LogType> = {
     'growth': 'growth',
@@ -69,7 +68,6 @@ const convertLogType = (backendType: string): LogType => {
   return typeMap[backendType] || 'growth';
 };
 
-// 转换后端数据到前端格式
 const convertLog = (item: any): PlantingLog => {
   return {
     id: item.id,
