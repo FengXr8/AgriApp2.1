@@ -11,6 +11,8 @@ import com.agriapp.chat.provider.ChatProviderRequest;
 import com.agriapp.chat.provider.ChatProviderResponse;
 import com.agriapp.chat.repository.DialogRepository;
 import com.agriapp.chat.repository.MessageRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -22,6 +24,7 @@ import java.util.UUID;
 @Service
 public class DiagnosisOrchestrator {
 
+    private static final Logger log = LoggerFactory.getLogger(DiagnosisOrchestrator.class);
     private static final String SCENE_DIAGNOSIS = "diagnosis";
     private static final String PROMPT_VERSION = "agri-ai-v1";
 
@@ -102,8 +105,21 @@ public class DiagnosisOrchestrator {
             if (!"AI_RESPONSE_INVALID".equals(e.getErrorCode())) {
                 throw e;
             }
-            providerResponse = chatProvider.repair(providerRequest, providerResponse.getRawContent());
-            structuredAnswer = responseGuard.parseAndValidate(providerResponse.getRawContent());
+            String rawContent = providerResponse.getRawContent();
+            log.warn("AI response parse failed - provider={}, model={}, rawContent={}",
+                    providerResponse.getProvider(),
+                    providerResponse.getModel(),
+                    truncate(rawContent, 2000));
+            providerResponse = chatProvider.repair(providerRequest, rawContent);
+            try {
+                structuredAnswer = responseGuard.parseAndValidate(providerResponse.getRawContent());
+            } catch (ChatException repairEx) {
+                log.warn("AI response repair failed - repairedContent={}, errorCode={}, errorMessage={}",
+                        truncate(providerResponse.getRawContent(), 2000),
+                        repairEx.getErrorCode(),
+                        repairEx.getMessage());
+                throw repairEx;
+            }
         }
 
         String aiCreatedAt = now();
@@ -172,6 +188,16 @@ public class DiagnosisOrchestrator {
 
     private String now() {
         return LocalDateTime.now(ZoneId.of("Asia/Shanghai")).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+    }
+
+    private String truncate(String str, int maxLength) {
+        if (str == null) {
+            return null;
+        }
+        if (str.length() <= maxLength) {
+            return str;
+        }
+        return str.substring(0, maxLength) + "...[truncated]";
     }
 
     public static class DuplicateMessageException extends RuntimeException {

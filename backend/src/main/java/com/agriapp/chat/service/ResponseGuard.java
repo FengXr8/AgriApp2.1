@@ -251,11 +251,24 @@ public class ResponseGuard {
             int lastFence = text.lastIndexOf("```");
             if (firstLine >= 0 && lastFence > firstLine) {
                 text = text.substring(firstLine + 1, lastFence).trim();
+            } else {
+                text = text.substring(3).trim();
             }
+        }
+        if (text.startsWith("json")) {
+            text = text.substring(4).trim();
         }
         int firstBrace = text.indexOf('{');
         int lastBrace = text.lastIndexOf('}');
         if (firstBrace >= 0 && lastBrace > firstBrace) {
+            int braceCount = 0;
+            for (int i = firstBrace; i <= lastBrace; i++) {
+                if (text.charAt(i) == '{') braceCount++;
+                if (text.charAt(i) == '}') braceCount--;
+                if (braceCount == 0 && i > firstBrace) {
+                    return text.substring(firstBrace, i + 1).trim();
+                }
+            }
             return text.substring(firstBrace, lastBrace + 1).trim();
         }
         return text;

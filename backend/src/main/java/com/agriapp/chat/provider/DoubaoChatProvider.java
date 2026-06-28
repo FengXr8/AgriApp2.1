@@ -4,6 +4,8 @@ import com.agriapp.chat.config.AiChatProperties;
 import com.agriapp.chat.dto.ChatContextDTO;
 import com.agriapp.chat.dto.RecognitionSnapshotDTO;
 import com.agriapp.chat.exception.ChatException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -22,6 +24,8 @@ import java.util.Map;
 @Component
 @ConditionalOnProperty(name = "agri.ai.provider", havingValue = "doubao")
 public class DoubaoChatProvider implements ChatProvider {
+
+    private static final Logger log = LoggerFactory.getLogger(DoubaoChatProvider.class);
 
     private final AiChatProperties properties;
     private final RestClient.Builder restClientBuilder;
@@ -99,6 +103,8 @@ public class DoubaoChatProvider implements ChatProvider {
 
     private ChatException mapHttpError(RestClientResponseException e) {
         int status = e.getStatusCode().value();
+        String responseBody = e.getResponseBodyAsString();
+        log.warn("Doubao HTTP error - status={}, body={}", status, truncate(responseBody, 2000));
         if (status == 401 || status == 403) {
             return new ChatException(502, "AI_SERVICE_UNAUTHORIZED", "Doubao authorization failed");
         }
@@ -184,14 +190,17 @@ public class DoubaoChatProvider implements ChatProvider {
 
     private String extractContent(Map<String, Object> response) {
         if (response == null || !(response.get("choices") instanceof List<?> choices) || choices.isEmpty()) {
+            log.warn("Doubao response has no choices - full response={}", truncate(response == null ? "null" : response.toString(), 2000));
             throw new ChatException(502, "AI_RESPONSE_INVALID", "Doubao response has no choices");
         }
         Object first = choices.get(0);
         if (!(first instanceof Map<?, ?> choice) || !(choice.get("message") instanceof Map<?, ?> message)) {
+            log.warn("Doubao response message is invalid - full response={}", truncate(response.toString(), 2000));
             throw new ChatException(502, "AI_RESPONSE_INVALID", "Doubao response message is invalid");
         }
         Object content = message.get("content");
         if (!(content instanceof String text) || text.isBlank()) {
+            log.warn("Doubao response content is empty - full response={}", truncate(response.toString(), 2000));
             throw new ChatException(502, "AI_RESPONSE_INVALID", "Doubao response content is empty");
         }
         return text;
@@ -210,5 +219,15 @@ public class DoubaoChatProvider implements ChatProvider {
 
     private String nullToEmpty(String value) {
         return value == null ? "" : value;
+    }
+
+    private String truncate(String str, int maxLength) {
+        if (str == null) {
+            return null;
+        }
+        if (str.length() <= maxLength) {
+            return str;
+        }
+        return str.substring(0, maxLength) + "...[truncated]";
     }
 }
