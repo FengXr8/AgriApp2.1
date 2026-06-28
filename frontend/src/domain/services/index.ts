@@ -5,3 +5,5 @@ export { recognitionService } from './recognition.service';
 export { chatService } from './chat.service';
 export { climateService } from './climate.service';
 export { taskReminderService } from './task-reminder.service';
+export { farmService } from './farm.service';
+export { farmSelectionService } from './farm-selection.service';

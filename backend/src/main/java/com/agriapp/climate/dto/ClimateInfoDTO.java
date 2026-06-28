@@ -34,7 +34,22 @@ public class ClimateInfoDTO {
     private String windDirection;
     private String updateTime;
     private List<ForecastDTO> forecast;
-    private SolarTermInfoDTO solarTermInfo; // 节气详细信息
+    private SolarTermInfoDTO solarTermInfo;
+
+    private String obsTime;
+    private String weatherIcon;
+    private Double precipitation;
+    private Integer pressure;
+    private Double visibility;
+    private Integer cloud;
+    private Integer dew;
+    private String primaryPollutant;
+    private Double pm25;
+    private Double pm10;
+    private Double no2;
+    private Double o3;
+    private Double so2;
+    private Double co;
 
     // Getter and Setter
 
@@ -221,6 +236,35 @@ public class ClimateInfoDTO {
     public void setSolarTermInfo(SolarTermInfoDTO solarTermInfo) {
         this.solarTermInfo = solarTermInfo;
     }
+
+    public String getObsTime() { return obsTime; }
+    public void setObsTime(String obsTime) { this.obsTime = obsTime; }
+    public String getWeatherIcon() { return weatherIcon; }
+    public void setWeatherIcon(String weatherIcon) { this.weatherIcon = weatherIcon; }
+    public Double getPrecipitation() { return precipitation; }
+    public void setPrecipitation(Double precipitation) { this.precipitation = precipitation; }
+    public Integer getPressure() { return pressure; }
+    public void setPressure(Integer pressure) { this.pressure = pressure; }
+    public Double getVisibility() { return visibility; }
+    public void setVisibility(Double visibility) { this.visibility = visibility; }
+    public Integer getCloud() { return cloud; }
+    public void setCloud(Integer cloud) { this.cloud = cloud; }
+    public Integer getDew() { return dew; }
+    public void setDew(Integer dew) { this.dew = dew; }
+    public String getPrimaryPollutant() { return primaryPollutant; }
+    public void setPrimaryPollutant(String primaryPollutant) { this.primaryPollutant = primaryPollutant; }
+    public Double getPm25() { return pm25; }
+    public void setPm25(Double pm25) { this.pm25 = pm25; }
+    public Double getPm10() { return pm10; }
+    public void setPm10(Double pm10) { this.pm10 = pm10; }
+    public Double getNo2() { return no2; }
+    public void setNo2(Double no2) { this.no2 = no2; }
+    public Double getO3() { return o3; }
+    public void setO3(Double o3) { this.o3 = o3; }
+    public Double getSo2() { return so2; }
+    public void setSo2(Double so2) { this.so2 = so2; }
+    public Double getCo() { return co; }
+    public void setCo(Double co) { this.co = co; }
 
     /**
      * 天气预报 DTO

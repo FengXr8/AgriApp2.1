@@ -21,4 +21,5 @@ export type {
   SendMessageParams,
   SupportLevel,
 } from './dialog.types';
-export type { ClimateInfo, FarmingSuggestion, WeatherType, Location } from './climate.types';
+export type { ClimateInfo, FarmingSuggestion, WeatherType, Location, SolarTermInfo, WeatherAlert } from './climate.types';
+export type { Farm, FieldPlot, FarmSelection } from './farm.types';

@@ -23,11 +23,14 @@ export interface SolarTermInfo {
     name: string;           // 节气名称（如：芒种）
     startDate: string;      // 开始日期（如：2026-06-05）
     endDate: string;        // 结束日期（如：2026-06-20）
+    dateRange: string;      // 展示用时间范围（如：6月5日 - 6月20日）
+    dayIndex?: number;      // 当前是本节气第几天
     icon?: string;          // 节气图标（如：🌾）
-    farmingTip?: string;    // 农事提示
+    farmingTip: string;     // 节气农业相关提示
   };
   nextTerm: {
     name: string;           // 下一节气名称（如：夏至）
+    date: string;           // 下一节气日期（如：2026-06-21）
     daysUntil: number;      // 距离天数（如：5）
   };
 }
@@ -52,9 +55,30 @@ export interface ClimateInfo {
   rainfall?: number;       // 降雨量
   windSpeed?: number;      // 风速
   windDirection?: string;  // 风向
+  visibility?: number;     // 能见度（公里）
+  pressure?: number;       // 大气压强（百帕）
+  pm25?: number;           // PM2.5浓度
   updateTime?: string;     // 更新时间
   forecast?: Forecast[];   // 天气预报
   solarTermInfo?: SolarTermInfo; // 节气详细信息
+}
+
+export interface WeatherAlert {
+  id: string;
+  alertSourceId?: string;
+  senderName?: string;
+  eventTypeName?: string;
+  eventTypeCode?: string;
+  severity?: string;
+  severityColor?: string;
+  headline?: string;
+  description?: string;
+  instruction?: string;
+  issuedTime?: string;
+  effectiveTime?: string;
+  onsetTime?: string;
+  expireTime?: string;
+  status?: string;
 }
 
 // 农事建议接口

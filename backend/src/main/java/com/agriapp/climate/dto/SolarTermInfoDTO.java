@@ -29,51 +29,31 @@ public class SolarTermInfoDTO {
      * 当前节气 DTO
      */
     public static class CurrentTermDTO {
-        private String name;           // 节气名称
-        private String startDate;      // 开始日期
-        private String endDate;        // 结束日期
-        private String icon;           // 节气图标
-        private String farmingTip;     // 农事提示
+        private String name;
+        private String startDate;
+        private String endDate;
+        private String icon;
+        private String farmingTip;
+        private String description;
+        private String proverb;
+        private String custom;
 
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public String getStartDate() {
-            return startDate;
-        }
-
-        public void setStartDate(String startDate) {
-            this.startDate = startDate;
-        }
-
-        public String getEndDate() {
-            return endDate;
-        }
-
-        public void setEndDate(String endDate) {
-            this.endDate = endDate;
-        }
-
-        public String getIcon() {
-            return icon;
-        }
-
-        public void setIcon(String icon) {
-            this.icon = icon;
-        }
-
-        public String getFarmingTip() {
-            return farmingTip;
-        }
-
-        public void setFarmingTip(String farmingTip) {
-            this.farmingTip = farmingTip;
-        }
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public String getStartDate() { return startDate; }
+        public void setStartDate(String startDate) { this.startDate = startDate; }
+        public String getEndDate() { return endDate; }
+        public void setEndDate(String endDate) { this.endDate = endDate; }
+        public String getIcon() { return icon; }
+        public void setIcon(String icon) { this.icon = icon; }
+        public String getFarmingTip() { return farmingTip; }
+        public void setFarmingTip(String farmingTip) { this.farmingTip = farmingTip; }
+        public String getDescription() { return description; }
+        public void setDescription(String description) { this.description = description; }
+        public String getProverb() { return proverb; }
+        public void setProverb(String proverb) { this.proverb = proverb; }
+        public String getCustom() { return custom; }
+        public void setCustom(String custom) { this.custom = custom; }
     }
 
     /**

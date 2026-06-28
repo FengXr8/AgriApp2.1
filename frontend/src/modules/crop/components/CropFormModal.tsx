@@ -4,8 +4,6 @@ import {
   cropIcons,
 } from '../utils/cropDisplay';
 import {
-  getPlotOptions,
-  getPlotDisplayNames,
   getStageOptions,
   getStatusOptions,
 } from '../utils/cropForm';
@@ -21,6 +19,9 @@ interface Props {
   onCancel: () => void;
   onSubmit: () => void;
   errors?: Partial<Record<keyof FormData, string>>;
+  farmName?: string;
+  plotOptions?: Array<{ id: string; name: string }>;
+  onCreatePlot?: () => void;
 }
 
 function FormField({
@@ -90,9 +91,10 @@ export default function CropFormModal({
   onCancel,
   onSubmit,
   errors,
+  farmName = '当前农场',
+  plotOptions = [],
+  onCreatePlot,
 }: Props) {
-  const plotOptions = getPlotOptions();
-  const plotDisplayNames = getPlotDisplayNames();
   const stageOptions = getStageOptions();
   const statusOptions = getStatusOptions();
 
@@ -165,19 +167,30 @@ export default function CropFormModal({
                 <View style={styles.section}>
                   <Text style={styles.sectionTitle}>地块与面积</Text>
                   <FormField label="农场">
-                    <Text style={styles.staticValue}>当前农场</Text>
+                    <Text style={styles.staticValue}>{farmName}</Text>
                   </FormField>
                   <FormField label="地块" required error={errors?.plotId}>
-                    <ButtonGroup
-                      options={plotDisplayNames}
-                      selected={plotDisplayNames[plotOptions.indexOf(value.plotId)] || ''}
-                      onSelect={(displayName) => {
-                        const index = plotDisplayNames.indexOf(displayName);
-                        if (index >= 0) {
-                          onChange({ ...value, plotId: plotOptions[index] });
-                        }
-                      }}
-                    />
+                    {plotOptions.length > 0 ? (
+                      <ButtonGroup
+                        options={plotOptions.map(plot => plot.name)}
+                        selected={plotOptions.find(plot => plot.id === value.plotId)?.name || ''}
+                        onSelect={(displayName) => {
+                          const plot = plotOptions.find(item => item.name === displayName);
+                          if (plot) {
+                            onChange({ ...value, plotId: plot.id });
+                          }
+                        }}
+                      />
+                    ) : (
+                      <View>
+                        <Text style={styles.emptyHint}>当前农场还没有地块，请先创建地块。</Text>
+                        {onCreatePlot && (
+                          <TouchableOpacity style={styles.inlineButton} onPress={onCreatePlot}>
+                            <Text style={styles.inlineButtonText}>创建地块</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
                   </FormField>
                   <FormField label="种植面积" required error={errors?.plantingArea}>
                     <View style={styles.inputWithUnit}>
@@ -368,6 +381,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     paddingVertical: 12,
+  },
+  emptyHint: {
+    fontSize: 14,
+    color: '#777',
+    lineHeight: 20,
+    marginBottom: 10,
+  },
+  inlineButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#E8F5E9',
+    borderColor: '#4CAF50',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  inlineButtonText: {
+    color: '#2E7D32',
+    fontWeight: '600',
   },
   errorText: {
     fontSize: 12,
